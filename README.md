@@ -37,7 +37,6 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | Snake | Steer the snake | You place apples (reachable cells, max 3 on board, cooldown) to make the computer-steered snake crash before it reaches length 40 |
 | Breakout | Paddle vs a 5x10 wall, 3 lives | You slide the wall to throw off the computer's paddle; win by making it lose 3 lives |
 | Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns |
-
 | Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon) | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
 | Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
 | Imitation | Chat with an in-browser AI stranger (WebLLM Llama-3.2-1B, WebGPU) and judge human or AI | Chat with a friend over a direct WebRTC link (copy-paste codes, no relay); either of you may secretly be on autopilot |

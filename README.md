@@ -56,6 +56,10 @@ Game sessions only edit their own file, so sessions do not collide.
 
 ## Deployment
 
-Netlify serves the repo root (`netlify.toml`) and is not connected yet. Until it is, `dev` and
-`main` are kept in sync. Once it is connected, develop on `dev` and merge to `main` only when
-ready to deploy, to conserve free build credits.
+Live at **https://cocktail-cabinet.eliweiss.me**. Netlify deploys the repo root (`netlify.toml`, no
+build step) from `main` on every push. Develop on `dev` and merge to `main` only when ready to
+deploy, to conserve free build credits.
+
+The domain `eliweiss.me` is registered at GoDaddy, which also hosts its DNS. Two records connect the
+subdomain: a `TXT` record (`subdomain-owner-verification`) that proves ownership to Netlify, and a
+`CNAME` (`cocktail-cabinet`) pointing at the Netlify site. Netlify issues the HTTPS certificate.

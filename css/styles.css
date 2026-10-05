@@ -372,9 +372,10 @@ svg { display: block; }
 /* ---------- Stage (where a running game mounts) ---------- */
 
 .stage {
-  width: min(100%, 60rem);
+  /* Width is capped so the 4:3 height stays within 72vh (96vh = 72vh * 4/3). A max-height
+     instead would shrink the box but not the canvas, cropping the bottom of the playfield. */
+  width: min(100%, 60rem, 96vh);
   aspect-ratio: 4 / 3;
-  max-height: 72vh;
   margin-inline: auto;
   display: grid;
   place-items: center;

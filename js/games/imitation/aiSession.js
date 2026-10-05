@@ -90,12 +90,17 @@ export function runAiSession(view, rng) {
       onTyping: view.setTyping,
       onSay: (text) => view.addMessage('partner', text),
     });
-    view.showComposer({ onSend: send });
+    view.showComposer({ onSend: send, onCallIt: () => callItEarly(tuning) });
     stranger.start();
     stopClock = startCountdown(tuning.roundSeconds, {
       onTick: view.setClock,
       onDone: () => timeUp(tuning),
     });
+  }
+
+  function callItEarly(tuning) {
+    stopClock();
+    timeUp(tuning, 'Your call.');
   }
 
   function send(text) {
@@ -104,14 +109,14 @@ export function runAiSession(view, rng) {
     stranger.hear(text);
   }
 
-  function timeUp(tuning) {
+  function timeUp(tuning, lead) {
     stranger.stop();
     endChat(match);
     view.showVerdict(PARTNER_LABEL, (verdict) => {
       fileVerdict(match, SIDE.partner, { verdict: judgeVerdict(myMessages, tuning.judgeBar), wasAi: true });
       fileVerdict(match, SIDE.me, { verdict, wasAi: false });
       showReveal(tuning);
-    });
+    }, lead);
   }
 
   function showReveal(tuning) {

@@ -101,13 +101,16 @@ export function createView(container) {
       root.classList.toggle('is-hurry', secondsLeft <= 10);
     },
 
-    showComposer({ onSend, onInput = () => {}, disabledReason = '' }) {
+    /** `onCallIt` adds a button to end the chat early and go straight to the verdict. */
+    showComposer({ onSend, onInput = () => {}, onCallIt, disabledReason = '' }) {
       const input = h('input', {
         class: 'imx-input', type: 'text', maxlength: MAX_MESSAGE_LENGTH, autocomplete: 'off',
         'aria-label': 'Message', placeholder: disabledReason || 'Type a message', disabled: Boolean(disabledReason),
       });
       const send = h('button', { class: 'imx-send', type: 'submit', disabled: Boolean(disabledReason) }, 'Send');
-      const form = h('form', { class: 'imx-composer' }, input, send);
+      const callIt = onCallIt && h('button', { class: 'imx-button imx-button--ghost', type: 'button' }, 'Make my call');
+      const form = h('form', { class: 'imx-composer' }, input, send, callIt);
+      callIt?.addEventListener('click', onCallIt);
       input.addEventListener('input', onInput);
       form.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -120,10 +123,11 @@ export function createView(container) {
       if (!disabledReason) input.focus({ preventScroll: true });
     },
 
-    showVerdict(partnerLabel, onVerdict) {
+    /** `lead` opens the question: 'Time.' when the clock ran out, 'Your call.' when ended early. */
+    showVerdict(partnerLabel, onVerdict, lead = 'Time.') {
       const choose = (verdict) => () => onVerdict(verdict);
       dock.replaceChildren(h('div', { class: 'imx-verdict' },
-        h('p', { class: 'imx-verdict__ask' }, `Time. Was the ${partnerLabel.toLowerCase()} a human or an AI?`),
+        h('p', { class: 'imx-verdict__ask' }, `${lead} Was the ${partnerLabel.toLowerCase()} a human or an AI?`),
         h('div', { class: 'imx-verdict__choices' },
           actionButton({ label: 'Human', tone: 'human', onClick: choose(VERDICT.human) }),
           actionButton({ label: 'AI', tone: 'computer', onClick: choose(VERDICT.ai) }))));

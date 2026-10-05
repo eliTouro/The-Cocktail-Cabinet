@@ -40,7 +40,7 @@ python3 -m http.server 8000      # then open http://localhost:8000
 
 | Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon) | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
 | Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
-| Imitation | Chat with an in-browser AI stranger (WebLLM, WebGPU) and judge human or AI | Chat with a friend over a direct WebRTC link (copy-paste codes, no relay); either of you may secretly be on autopilot |
+| Imitation | Chat with an in-browser AI stranger (WebLLM Llama-3.2-1B, WebGPU) and judge human or AI | Chat with a friend over a direct WebRTC link (copy-paste codes, no relay); either of you may secretly be on autopilot |
 
 In every game (except Imitation, which is a chat) the computer uses the same rules, collisions and speed limits as a human, sees only
 what a human could see, and its skill ramps up over time so the human's challenge grows gradually.

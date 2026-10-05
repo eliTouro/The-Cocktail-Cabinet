@@ -189,13 +189,18 @@ export function runHumanSession(view, rng) {
     view.showChat({ partnerLabel: PARTNER, round: match.round, totalRounds: TOTAL_ROUNDS });
     view.setScores(match.totals.me, match.totals.partner, PARTNER);
     if (isAutopilot) startAutopilot(tuning);
-    else view.showComposer({ onSend: sendChat, onInput: signalTyping });
+    else view.showComposer({ onSend: sendChat, onInput: signalTyping, onCallIt: callItEarly });
     stopClock = startCountdown(tuning.roundSeconds, { onTick: view.setClock, onDone: timeUp });
+  }
+
+  function callItEarly() {
+    stopClock();
+    timeUp('Your call.');
   }
 
   function startAutopilot(tuning) {
     view.addMessage('system', 'Autopilot round: the AI in your browser is chatting for you. Your friend does not know. Sit back.');
-    view.showComposer({ onSend: () => {}, disabledReason: 'Autopilot is typing for you' });
+    view.showComposer({ onSend: () => {}, onCallIt: callItEarly, disabledReason: 'Autopilot is typing for you' });
     pilot = createStranger({
       getEngine: engine.current,
       persona: createPersona(rng, tuning.personaPolish),
@@ -225,7 +230,7 @@ export function runHumanSession(view, rng) {
     pilot?.hear(text);
   }
 
-  function timeUp() {
+  function timeUp(lead) {
     pilot?.stop();
     pilot = null;
     endChat(match);
@@ -234,7 +239,7 @@ export function runHumanSession(view, rng) {
       link.send({ type: MESSAGE.verdict, round: match.round, verdict, wasAi: isAutopilot });
       if (match.phase === PHASE.reveal) showReveal();
       else view.showDockNote('Waiting for your friend\'s verdict…');
-    });
+    }, lead);
   }
 
   function partnerFiled({ round, verdict, wasAi }) {

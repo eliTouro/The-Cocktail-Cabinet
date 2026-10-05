@@ -126,7 +126,7 @@ We deploy to Netlify only when done (or roughly, for final testing) to conserve 
 - Check state before pushing: `git status`, `git branch -vv`, `git remote -v`. Commit with the attribution line from the session instructions, then `git push`.
 - **Connector notes:** the GitHub MCP tools (`mcp__<uuid>__*`, load schemas with ToolSearch) can read this repo but every write returns `403 Resource not accessible by integration`; the `plugin:github` server fails with an authorization error. Don't use the connector to write.
 - Run `git fetch` and look at `git log origin/dev` before starting work in a new session, in case the repo changed elsewhere (e.g. edits made on github.com).
-- **Branches:** `main` is the deploy branch (Netlify will watch it). Day-to-day work is committed and pushed to `dev`, and merged into `main` only when the user says it's time to deploy. Never push to `main` without the user asking.
+- **Branches:** the user has authorized pushing to `main` whenever it makes sense during development (2026-10-05): Netlify is not connected, so nothing deploys. Keep `dev` and `main` in sync (merge `dev` into `main`, push both). **Once the user says Netlify is connected, stop pushing to `main` freely**: every push to `main` would then trigger a build and spend free credits, so work on `dev` and merge to `main` only when the user asks to deploy.
 - Repo is public; never commit secrets, tokens or personal data.
 - Commit and push only relevant files after finishing a plan or an independent part of one (per global CLAUDE.md). Meaningful, descriptive commit messages.
 - Keep `README.md` current when architecture, structure, features or constraints meaningfully change (per global CLAUDE.md).

@@ -38,5 +38,6 @@ Game sessions only edit their own file, so sessions do not collide.
 
 ## Deployment
 
-Netlify serves the repo root (`netlify.toml`). To conserve free build credits, develop on a
-`dev` branch and merge to `main` only when ready to deploy.
+Netlify serves the repo root (`netlify.toml`) and is not connected yet. Until it is, `dev` and
+`main` are kept in sync. Once it is connected, develop on `dev` and merge to `main` only when
+ready to deploy, to conserve free build credits.

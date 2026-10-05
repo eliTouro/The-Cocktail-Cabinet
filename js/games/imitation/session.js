@@ -105,6 +105,7 @@ export function runSession(view, rng, initialRole) {
   /** Deceiver: starts a round and tells the judge how long to "search" for. */
   function beginRound() {
     const delayMs = pickMatchmakingDelayMs(rng);
+    ghost.preload();
     startMatchmaking(match);
     send({ type: MESSAGE.matchmake, round: match.round, delayMs });
     showMatchmaking(delayMs, showChoice);

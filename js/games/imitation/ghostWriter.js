@@ -4,8 +4,9 @@ import { createPersona } from './persona.js';
 import { createStranger } from './stranger.js';
 
 /**
- * The deceiver's optional AI: answers the judge on the deceiver's behalf. The model only starts
- * loading the first time the deceiver picks it, then stays loaded for later rounds.
+ * The deceiver's optional AI: answers the judge on the deceiver's behalf. The model starts loading
+ * when a round begins on the deceiver's side (the judge cannot see this) and stays loaded for later
+ * rounds, so it is usually ready by the time the deceiver picks it.
  *
  * While the AI "types", it sends a typing signal as often as a person typing would, so the judge's
  * screen looks the same whoever is answering.
@@ -60,6 +61,8 @@ export function createGhostWriter(rng) {
   }
 
   return {
+    /** Starts loading the model without waiting, so it is ready by the time the AI is picked. */
+    preload: ensureEngine,
     warmUp,
     status,
     /** Starts answering for this round. `polish` comes from the difficulty ramp. */

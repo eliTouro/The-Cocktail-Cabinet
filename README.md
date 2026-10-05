@@ -39,7 +39,7 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns |
 | Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon) | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
 | Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
-| Imitation | Chat with an in-browser AI stranger (WebLLM Llama-3.2-1B, WebGPU) and judge human or AI | Chat with a friend over a direct WebRTC link (copy-paste codes, no relay); either of you may secretly be on autopilot |
+| Imitation | Be the judge: question a friend and call whether they are human or an AI | Be the deceiver: each round, answer yourself or let an in-browser AI (Llama-3.2-1B via WebLLM, scripted fallback) answer for you. Two browsers, direct WebRTC with a copy-paste invite link, no relay. Right call +1 judge, wrong +1 deceiver, unlimited rounds, score kept |
 
 In every game (except Imitation, which is a chat) the computer uses the same rules, collisions and speed limits as a human, sees only
 what a human could see, and its skill ramps up over time so the human's challenge grows gradually.

@@ -34,10 +34,10 @@ export const MATCHMAKING = {
 
 /**
  * After the deceiver picks the AI, wait this long at most for the language model to load before
- * the chat opens; until it is ready the scripted bot answers. Capped so a first-time download
- * (about 0.9 GB) does not stall the judge.
+ * the chat opens; until it is ready the scripted bot answers. The model starts loading when the
+ * round begins, so only a first-time download (about 0.9 GB) on a slow connection reaches the cap.
  */
-export const ENGINE_WAIT = { capMs: 15000, pollMs: 500 };
+export const ENGINE_WAIT = { capMs: 40000, pollMs: 500 };
 
 /** People send a typing signal at most this often while typing; the AI's typing mimics it. */
 export const TYPING_SIGNAL_EVERY_MS = 2000;

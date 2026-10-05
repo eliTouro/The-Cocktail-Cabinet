@@ -6,6 +6,13 @@
  * `game` is its entry below; `mode` is one of that entry's `modes`. The cabinet calls
  * destroy() when the player leaves, so a game must stop its loop and remove its listeners.
  *
+ * The stage is 4:3. Games draw on a 640x480 canvas from ./core/canvas.js, step with
+ * ./core/loop.js. The stage carries `tone-<mode.tone>`, which colours the overlay button.
+ *
+ * Players: human input and the computer are interchangeable controllers. Both produce the same
+ * kind of action for the same game rules, and the computer sees only what a human could see.
+ * The rules module never knows who is playing, so no collision or physics is ever skipped.
+ *
  * Modes: `tone` says who plays the classic role. 'human' means you do; 'computer' means the
  * computer does and you take the other side. `short` labels the chip on the game card.
  */

@@ -24,7 +24,9 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/games.js` | Registry of the seven games and the game contract |
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
-| `js/games/<id>.js` | One module per game (currently placeholders) |
+| `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
+| `js/games/<id>.js` | One module per game (placeholders until built) |
+| `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |
 

@@ -109,7 +109,7 @@ function backLink(label, href) {
 /* ---------- Play ---------- */
 
 async function showPlay(root, game, mode) {
-  const stage = h('div', { class: 'stage', role: 'region', 'aria-label': `${game.name} game` });
+  const stage = h('div', { class: `stage tone-${mode.tone}`, role: 'region', 'aria-label': `${game.name} game` });
   root.replaceChildren(
     h('nav', { class: 'crumbs' },
       backLink('All games', hrefFor()),

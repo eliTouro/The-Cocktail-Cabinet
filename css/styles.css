@@ -387,6 +387,69 @@ svg { display: block; }
   box-shadow: var(--shadow-floating);
 }
 
+.stage { position: relative; }
+
+.game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.scoreboard {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-4);
+  right: var(--space-4);
+  z-index: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  text-align: center;
+  background: rgba(14, 11, 21, 0.78);
+}
+
+.overlay[hidden] { display: none; }
+
+.overlay__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.overlay__detail { max-width: 26rem; color: var(--muted); }
+
+.overlay__action {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--tone, var(--human));
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-spring);
+}
+
+.overlay__action:hover { transform: translateY(-2px); }
+.overlay__action:active { transform: translateY(0) scale(0.96); }
+
 .placeholder {
   display: grid;
   justify-items: center;

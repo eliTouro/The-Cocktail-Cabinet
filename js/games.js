@@ -32,8 +32,8 @@ export const GAMES = [
     name: 'Breakout',
     tagline: 'Bounce the ball, clear the wall.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Play paddle', label: 'Play the paddle', blurb: 'Keep the ball alive and break every brick.' },
-      { id: 'computer', tone: 'computer', short: 'Face computer', label: 'Play against the computer', blurb: 'The computer takes the paddle while you take the other side.' },
+      { id: 'human', tone: 'human', short: 'Play paddle', label: 'Play the paddle', blurb: 'Steer the paddle, angle the ball with its edges, and clear all 50 bricks with three lives.' },
+      { id: 'computer', tone: 'computer', short: 'Slide the wall', label: 'Play against the computer', blurb: 'The computer swings the paddle. You slide the wall to throw its shots off, and win by making it drop all three lives.' },
     ],
     load: () => import('./games/breakout.js'),
   },
@@ -43,7 +43,7 @@ export const GAMES = [
     tagline: 'Squeeze through the gaps between columns.',
     modes: [
       { id: 'human', tone: 'human', short: 'Fly through', label: 'Fly through the columns', blurb: 'Find the gap in every column and keep moving.' },
-      { id: 'computer', tone: 'computer', short: 'Lay columns', label: 'Lay out the columns', blurb: 'You build the course. The computer has to get through it without cheating.' },
+      { id: 'computer', tone: 'computer', short: 'Lay columns', label: 'Lay the columns', blurb: 'You build the course and the computer flies. Make it splat within 20 columns.' },
     ],
     load: () => import('./games/splat.js'),
   },

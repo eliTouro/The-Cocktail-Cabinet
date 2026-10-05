@@ -25,10 +25,22 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
 | `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
-| `js/games/<id>.js` | One module per game (placeholders until built) |
+| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Snake, Breakout and Splat are playable; the rest are placeholders |
 | `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |
+
+## Games and their flips
+
+| Game | You play | Flipped: the computer plays the classic role, you take the other side |
+| --- | --- | --- |
+| Snake | Steer the snake | You place apples (reachable cells, max 3 on board, cooldown) to make the computer-steered snake crash before it reaches length 40 |
+| Breakout | Paddle vs a 5x10 wall, 3 lives | You slide the wall to throw off the computer's paddle; win by making it lose 3 lives |
+| Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns |
+
+In every game the computer uses the same rules, collisions and speed limits as a human, sees only
+what a human could see, and its skill ramps up over time so the human's challenge grows gradually.
+Tests simulate full AI games (`npm test`).
 
 ## Adding a game
 

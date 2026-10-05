@@ -1,0 +1,4 @@
+# Static site: no build step. Netlify publishes the repo root.
+# Deploys are deliberately kept manual/paused until the project is ready (free build credits).
+[build]
+  publish = "."

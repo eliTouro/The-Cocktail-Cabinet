@@ -38,7 +38,7 @@ Build a single web page — **the cocktail cabinet** — holding seven arcade ga
 | Asteroids | The computer flies the ship; the human sends the asteroids. |
 | Missile Command | Design the flip ourselves. |
 | Imitation | Play the AI, or another human in a second browser. |
-| Our game | Design the flip ourselves. |
+| Mastermind (game seven) | You break the computer's code, or you make a code and the computer breaks it. |
 
 Design decisions for the open items (Missile Command flip, game seven and its flip) must be recorded in the delegation log when made.
 

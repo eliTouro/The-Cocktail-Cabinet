@@ -160,6 +160,16 @@ test('the weak breaker sometimes fails, the strong one cracks most codes but not
   assert.ok(crackingStrongly > 0, 'a breaker that wastes some guesses can be stumped');
 });
 
+test('when the person makes the code, they can stump the computer at every level without it being trivial', () => {
+  for (const level of [1, 3, 5, 7, FINAL_LEVEL]) {
+    const settings = levelSettings(level, { personBreaks: false });
+    assert.equal(settings.guesses, 6);
+    const stumped = failureRate({ settings, skill: breakerSkill(level), games: 120 });
+    assert.ok(stumped >= 0.1, `level ${level}: a random code stumps the computer only ${stumped}`);
+    assert.ok(stumped <= 0.85, `level ${level}: the computer is too weak (stumped ${stumped})`);
+  }
+});
+
 test('every level is beatable by the breaker in simulation', () => {
   for (let level = 1; level <= FINAL_LEVEL; level += 1) {
     const rate = failureRate({ settings: levelSettings(level), skill: breakerSkill(level), games: 30 });

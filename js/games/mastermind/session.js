@@ -28,13 +28,13 @@ export function createRun({ modeId, rng }) {
     get level() { return level; },
     get cleared() { return cleared; },
     get round() { return round; },
-    get settings() { return levelSettings(level); },
+    get settings() { return levelSettings(level, { personBreaks }); },
     get finished() { return isFinished(); },
     get levelCleared() { return isLevelCleared(); },
 
     /** Human mode draws the computer's secret itself; computer mode needs the person's code. */
     startLevel(personCode) {
-      const settings = levelSettings(level);
+      const settings = levelSettings(level, { personBreaks });
       const secret = personBreaks ? randomCode(settings, rng) : personCode;
       const check = checkCode(secret, settings);
       if (check.ok) round = createRound(settings, secret);

@@ -48,12 +48,21 @@ export const LOOKAHEAD_POOL_SIZE = 150;
 
 const rampByLevel = (range, level) => ramp(range.from, range.to, FINAL_LEVEL - 1, level - 1);
 
-export function levelSettings(level) {
+/**
+ * When the person MAKES the code, their job is to stump the computer, so the guess limit works the
+ * other way round: a fixed 6 keeps the computer's failure rate against random codes falling from
+ * about 50-70% at the early levels to about 20% at level 10 as its skill ramps (measured with the
+ * seeded simulations in tests/mastermindSimulation.js). A person choosing codes on purpose does better.
+ */
+const MAKER_GUESSES = 6;
+
+/** `personBreaks` is true when the person cracks the codes, false when they make them. */
+export function levelSettings(level, { personBreaks = true } = {}) {
   const { pegs, colours, guesses } = BOARD_RAMP;
   return {
     pegs: Math.round(rampByLevel(pegs, level)),
     colours: Math.round(rampByLevel(colours, level)),
-    guesses: Math.round(rampByLevel(guesses, level)),
+    guesses: personBreaks ? Math.round(rampByLevel(guesses, level)) : MAKER_GUESSES,
     repeats: level >= REPEATS_FROM_LEVEL,
   };
 }

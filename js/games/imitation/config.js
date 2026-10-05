@@ -1,49 +1,46 @@
 import { ramp } from '../../core/difficulty.js';
 
-export const TOTAL_ROUNDS = 5;
-/** Rounds after the first over which every difficulty knob reaches its hardest value. */
-const RAMP_ROUNDS = TOTAL_ROUNDS - 1;
+/** The two roles. The route's mode is always the viewer's own role: #/imitation/<role>. */
+export const ROLE = { judge: 'judge', deceiver: 'deceiver' };
 
-export const POINTS = {
-  /** Your verdict on the partner was right. */
-  read: 2,
-  /** The partner's verdict on you was "human". */
-  pass: 3,
-};
-
+/** A judge's verdict, and the truth about who wrote the deceiver's replies, share one vocabulary. */
 export const VERDICT = { human: 'human', ai: 'ai' };
 
 export const MAX_MESSAGE_LENGTH = 200;
-export const PARTNER_LABEL = 'Stranger';
+
+/** Rounds are open-ended, so every difficulty knob reaches its hardest value here and holds. */
+const RAMP_ROUNDS = 3;
 
 /**
- * Difficulty per round (0-based), all through core/difficulty ramp, identical for both sides:
- * - roundSeconds: chat time shrinks 100 s -> 60 s, so there is less evidence to judge on.
- * - judgeBar (Play the AI): the humanness score your messages need to pass the AI judge, 0.35 -> 0.6.
- * - personaPolish: how hard the AI works at sounding human (typos, lowercase, slang), 0.4 -> 1.
- * - autopilotChance (Play another person): the chance a side is secretly ghost-written by the
- *   in-browser AI this round, 0.2 -> 0.45, so "human" stops being a safe guess.
+ * Difficulty per round (0-based), through core/difficulty ramp, the same in both browsers:
+ * - roundSeconds: chat time shrinks 100 s -> 75 s, so the judge has less evidence; the judge can
+ *   always call it early, and 75 s is still a real conversation.
+ * - personaPolish: how hard the deceiver's AI works at sounding human (lowercase, slang, typos),
+ *   0.4 -> 1, so "AI" gets harder to spot as the evening goes on.
  */
 export function tuningForRound(round) {
   return {
-    roundSeconds: Math.round(ramp(100, 60, RAMP_ROUNDS, round)),
-    judgeBar: ramp(0.35, 0.6, RAMP_ROUNDS, round),
+    roundSeconds: Math.round(ramp(100, 75, RAMP_ROUNDS, round)),
     personaPolish: ramp(0.4, 1, RAMP_ROUNDS, round),
-    autopilotChance: ramp(0.2, 0.45, RAMP_ROUNDS, round),
   };
 }
 
-/** Simulated matchmaking: a random wait in this range, longer if the chat engine is still warming up. */
+/** Simulated matchmaking before every round: a random wait in this range, with status lines. */
 export const MATCHMAKING = {
-  minSeconds: 4,
-  maxSeconds: 11,
+  minSeconds: 3,
+  maxSeconds: 8,
   statusEverySeconds: 1.6,
-  /** Give up waiting for the language model after this and use the built-in chat script. */
-  engineWaitCapSeconds: 90,
 };
 
-/** Short pause on "Connecting…" once a friend's data channel opens, so it reads like a real match. */
-export const CONNECT_PAUSE_MS = 1200;
+/**
+ * After the deceiver picks the AI, wait this long at most for the language model to load before
+ * the chat opens; until it is ready the scripted bot answers. Capped so a first-time download
+ * (about 0.9 GB) does not stall the judge.
+ */
+export const ENGINE_WAIT = { capMs: 15000, pollMs: 500 };
+
+/** People send a typing signal at most this often while typing; the AI's typing mimics it. */
+export const TYPING_SIGNAL_EVERY_MS = 2000;
 
 /**
  * The only third-party service: a public STUN server, used for stateless address discovery so two
@@ -77,6 +74,6 @@ export const TYPING = {
   maxMs: 11000,
 };
 
-/** The stranger speaks first in about half the rounds, and nudges you if you go quiet. */
+/** The AI speaks first in about half the rounds, and nudges the judge if they go quiet. */
 export const OPENER = { chance: 0.5, minMs: 1500, maxMs: 5000 };
 export const IDLE_NUDGE_MS = 22000;

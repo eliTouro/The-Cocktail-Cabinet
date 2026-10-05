@@ -13,7 +13,7 @@ const realTimers = {
 /**
  * Drives a chat engine as one side of a conversation, with human pacing: it may open, replies to
  * what it hears after a believable typing delay (one reply at a time, catching up on anything said
- * meanwhile), and nudges once if the chat goes quiet. Used for the AI stranger and for autopilot.
+ * meanwhile), and nudges once if the chat goes quiet. Used as the deceiver's AI.
  *
  * `getEngine()` returns the engine to use right now; `timers` can be stubbed in tests.
  */

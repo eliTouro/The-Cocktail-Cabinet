@@ -1,19 +1,21 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createRng } from '../js/core/rng.js';
-import { MATCHMAKING, POINTS, TOTAL_ROUNDS, TYPING, VERDICT, tuningForRound } from '../js/games/imitation/config.js';
+import { MATCHMAKING, ROLE, TYPING, VERDICT, tuningForRound } from '../js/games/imitation/config.js';
 import { createFallbackBot } from '../js/games/imitation/fallbackBot.js';
-import { humanityScore, judgeVerdict } from '../js/games/imitation/judge.js';
 import {
-  PHASE, SIDE, createMatch, currentResult, endChat, fileVerdict, nextRound, scoreRound, startChat,
+  PHASE, SIDE, chooseTruth, createMatch, endChat, endMatchmaking, judgeIsRight, markReady,
+  oppositeRole, settleRound, startChat, startMatchmaking,
 } from '../js/games/imitation/match.js';
-import { planMatchmaking } from '../js/games/imitation/matchmaking.js';
+import { pickMatchmakingDelayMs, planMatchmaking } from '../js/games/imitation/matchmaking.js';
 import { cleanReply, createPersona, humanize, toPromptMessages, typingDelayMs } from '../js/games/imitation/persona.js';
 import { MESSAGE, PROTOCOL_VERSION, decodeMessage, encodeMessage } from '../js/games/imitation/protocol.js';
 import {
-  CODE_KIND, SignalCodeError, decodeSignal, encodeSignal, inviteLink, packSdp, readInviteFromHash,
+  CODE_KIND, SignalCodeError, decodeSignal, encodeSignal, inviteLink, packSdp, readInviteFromHash, roleHash,
 } from '../js/games/imitation/signal.js';
 import { createStranger } from '../js/games/imitation/stranger.js';
+import { revealLines, scoreLine } from '../js/games/imitation/summary.js';
+import { parseHash } from '../js/router.js';
 
 const FINGERPRINT = Array.from({ length: 32 }, (_, i) => (i * 7 + 3).toString(16).toUpperCase().padStart(2, '0')).join(':');
 
@@ -77,143 +79,160 @@ test('codes in the wrong box or mangled get friendly errors', async () => {
   await assert.rejects(decodeSignal(invite.slice(0, 30), CODE_KIND.invite), (error) => /cut off/.test(error.message));
 });
 
-test('an invite link carries the code past the router and can be pasted whole', async () => {
+/* ---------- Invite links and roles ---------- */
+
+test('an invite link sends the friend to the opposite role, for either inviter', async () => {
   const code = await encodeSignal({ type: 'offer', sdp: CHROME_OFFER });
-  const link = inviteLink('https://games.example/#/imitation/human', code);
-  assert.equal(link, `https://games.example/#/imitation/human/join/${code}`);
-  const hash = link.slice(link.indexOf('#'));
-  const [gameId, modeId] = hash.replace(/^#\/?/, '').split('/');
-  assert.deepEqual([gameId, modeId], ['imitation', 'human']);
-  assert.equal(readInviteFromHash(hash), code);
-  assert.equal(readInviteFromHash('#/imitation/human'), null);
-  assert.equal((await decodeSignal(link, CODE_KIND.invite)).type, 'offer');
+  for (const inviterRole of [ROLE.judge, ROLE.deceiver]) {
+    const friendRole = oppositeRole(inviterRole);
+    const link = inviteLink(`https://games.example/${roleHash(inviterRole)}`, friendRole, code);
+    assert.equal(link, `https://games.example/#/imitation/${friendRole}/join/${code}`);
+    const hash = link.slice(link.indexOf('#'));
+    assert.deepEqual(parseHash(hash), { gameId: 'imitation', modeId: friendRole }, 'the router sees the friend\'s own role');
+    assert.notEqual(parseHash(hash).modeId, inviterRole);
+    assert.equal(readInviteFromHash(hash), code);
+    assert.equal((await decodeSignal(link, CODE_KIND.invite)).type, 'offer', 'the whole link can be pasted');
+  }
+  assert.equal(oppositeRole(ROLE.judge), ROLE.deceiver);
+  assert.equal(oppositeRole(ROLE.deceiver), ROLE.judge);
+  assert.equal(readInviteFromHash(roleHash(ROLE.judge)), null);
 });
 
 /* ---------- Matchmaking ---------- */
 
-test('matchmaking waits between the configured bounds, with status lines in order', () => {
+test('matchmaking waits 3 to 8 seconds, with status lines in order', () => {
+  assert.deepEqual([MATCHMAKING.minSeconds, MATCHMAKING.maxSeconds], [3, 8]);
   for (let seed = 1; seed <= 300; seed += 1) {
-    const { delayMs, statuses } = planMatchmaking(createRng(seed));
-    assert.ok(delayMs >= MATCHMAKING.minSeconds * 1000 && delayMs <= MATCHMAKING.maxSeconds * 1000);
+    const rng = createRng(seed);
+    const delayMs = pickMatchmakingDelayMs(rng);
+    assert.ok(delayMs >= 3000 && delayMs <= 8000, `${delayMs} ms`);
+    const statuses = planMatchmaking(rng, delayMs);
     assert.equal(statuses[0].atMs, 0);
-    assert.equal(statuses[statuses.length - 1].atMs, delayMs);
+    assert.equal(statuses.at(-1).atMs, delayMs);
     statuses.forEach((status, i) => i > 0 && assert.ok(status.atMs > statuses[i - 1].atMs));
     statuses.forEach((status) => assert.equal(typeof status.text, 'string'));
   }
 });
 
 test('matchmaking delays vary', () => {
-  const delays = new Set(Array.from({ length: 20 }, (_, seed) => planMatchmaking(createRng(seed + 1)).delayMs));
+  const delays = new Set(Array.from({ length: 20 }, (_, seed) => pickMatchmakingDelayMs(createRng(seed + 1))));
   assert.ok(delays.size > 15);
 });
 
-/* ---------- Match and scoring ---------- */
+/* ---------- Rounds and scoring ---------- */
 
-test('scoring: read for a right verdict, pass for being judged human', () => {
-  const score = scoreRound({
-    me: { verdict: VERDICT.ai, wasAi: false },
-    partner: { verdict: VERDICT.human, wasAi: true },
-  });
-  assert.deepEqual(score.me, { read: POINTS.read, pass: POINTS.pass, total: POINTS.read + POINTS.pass });
-  assert.deepEqual(score.partner, { read: POINTS.read, pass: 0, total: POINTS.read });
+/** Plays one round on one side; the deceiver's side also records its secret choice. */
+function playRound(match, { truth, verdict }) {
+  startMatchmaking(match);
+  endMatchmaking(match);
+  if (match.role === ROLE.deceiver) chooseTruth(match, truth);
+  startChat(match);
+  endChat(match);
+  return settleRound(match, { verdict, truth });
+}
 
-  const fooled = scoreRound({
-    me: { verdict: VERDICT.human, wasAi: false },
-    partner: { verdict: VERDICT.ai, wasAi: true },
-  });
-  assert.deepEqual(fooled.me, { read: 0, pass: 0, total: 0 });
-  assert.deepEqual(fooled.partner, { read: 0, pass: POINTS.pass, total: POINTS.pass });
+test('a right call scores the judge, a wrong one the deceiver', () => {
+  assert.equal(judgeIsRight(VERDICT.ai, VERDICT.ai), true);
+  assert.equal(judgeIsRight(VERDICT.human, VERDICT.ai), false);
+  const match = createMatch(ROLE.judge);
+  assert.equal(playRound(match, { truth: VERDICT.ai, verdict: VERDICT.ai }).winner, ROLE.judge);
+  markReady(match, SIDE.me);
+  assert.equal(playRound(match, { truth: VERDICT.human, verdict: VERDICT.ai }).winner, ROLE.deceiver);
+  assert.deepEqual(match.score, { judge: 1, deceiver: 1 });
 });
 
-test('a match runs matching -> chatting -> verdict -> reveal for every round, then ends', () => {
-  const match = createMatch({ totalRounds: TOTAL_ROUNDS });
-  for (let round = 0; round < TOTAL_ROUNDS; round += 1) {
-    assert.equal(match.phase, PHASE.matching);
-    assert.equal(match.round, round);
-    startChat(match);
-    endChat(match);
-    fileVerdict(match, SIDE.me, { verdict: VERDICT.ai, wasAi: false });
-    assert.equal(match.phase, PHASE.verdict, 'waits for the partner');
-    fileVerdict(match, SIDE.partner, { verdict: VERDICT.human, wasAi: true });
+test('both sides score a round identically', () => {
+  const judge = createMatch(ROLE.judge);
+  const deceiver = createMatch(ROLE.deceiver);
+  const round = { truth: VERDICT.human, verdict: VERDICT.human };
+  assert.deepEqual(playRound(judge, round), playRound(deceiver, round));
+  assert.deepEqual(judge.score, deceiver.score);
+});
+
+test('play again needs both sides, keeps the score and the roles, and rounds never run out', () => {
+  const match = createMatch(ROLE.deceiver);
+  for (let round = 0; round < 12; round += 1) {
+    assert.equal(playRound(match, { truth: VERDICT.ai, verdict: VERDICT.human }).round, round);
     assert.equal(match.phase, PHASE.reveal);
-    assert.equal(currentResult(match).round, round);
-    nextRound(match);
+    assert.equal(markReady(match, SIDE.me), false, 'waits for the friend');
+    assert.equal(markReady(match, SIDE.partner), true);
   }
-  assert.equal(match.phase, PHASE.over);
-  assert.deepEqual(match.totals, { me: TOTAL_ROUNDS * 5, partner: TOTAL_ROUNDS * 2 });
+  assert.equal(match.role, ROLE.deceiver);
+  assert.deepEqual(match.score, { judge: 0, deceiver: 12 });
+  assert.equal(match.results.length, 12);
 });
 
-test('a partner verdict that arrives before my clock runs out waits for mine', () => {
-  const match = createMatch({ totalRounds: 1 });
-  startChat(match);
-  fileVerdict(match, SIDE.partner, { verdict: VERDICT.human, wasAi: false });
-  assert.equal(match.phase, PHASE.chatting);
-  endChat(match);
-  fileVerdict(match, SIDE.me, { verdict: VERDICT.human, wasAi: false });
-  assert.equal(match.phase, PHASE.reveal);
-  assert.deepEqual(match.totals, { me: 5, partner: 5 });
+test('the round refuses out-of-order steps, unknown verdicts and a judge choosing', () => {
+  assert.throws(() => createMatch('referee'));
+  const deceiver = createMatch(ROLE.deceiver);
+  assert.throws(() => endMatchmaking(deceiver));
+  startMatchmaking(deceiver);
+  endMatchmaking(deceiver);
+  assert.throws(() => startChat(deceiver), 'the deceiver must choose first');
+  assert.throws(() => chooseTruth(deceiver, 'maybe'));
+  chooseTruth(deceiver, VERDICT.human);
+  startChat(deceiver);
+  assert.throws(() => settleRound(deceiver, { verdict: VERDICT.ai, truth: VERDICT.human }), 'chat still open');
+  assert.throws(() => markReady(deceiver, SIDE.me));
+
+  const judge = createMatch(ROLE.judge);
+  startMatchmaking(judge);
+  endMatchmaking(judge);
+  assert.throws(() => chooseTruth(judge, VERDICT.ai));
 });
 
-test('the match refuses out-of-order steps and unknown verdicts', () => {
-  const match = createMatch({ totalRounds: 1 });
-  assert.throws(() => endChat(match));
-  assert.throws(() => fileVerdict(match, SIDE.me, { verdict: VERDICT.ai, wasAi: false }));
-  startChat(match);
-  endChat(match);
-  assert.throws(() => fileVerdict(match, SIDE.me, { verdict: 'maybe', wasAi: false }));
+test('the reveal says what the deceiver did, who scored and the score by role', () => {
+  const score = { judge: 2, deceiver: 1 };
+  const result = { verdict: VERDICT.human, truth: VERDICT.ai, winner: ROLE.deceiver };
+  assert.equal(scoreLine(score), 'Judge 2 : Deceiver 1');
+  const judgeLines = revealLines(result, ROLE.judge, score);
+  assert.match(judgeLines[0], /written by the AI/);
+  assert.match(judgeLines[1], /You said human\. The point goes to the deceiver/);
+  assert.equal(judgeLines[2], 'Judge 2 : Deceiver 1');
+  assert.match(revealLines(result, ROLE.deceiver, score)[1], /The judge said human\. The point is yours/);
 });
 
 /* ---------- Chat protocol ---------- */
 
 test('protocol messages encode, decode and are validated', () => {
   const samples = [
-    { type: MESSAGE.hello, version: PROTOCOL_VERSION },
-    { type: MESSAGE.start, round: 2 },
+    { type: MESSAGE.hello, version: PROTOCOL_VERSION, role: ROLE.judge },
+    { type: MESSAGE.matchmake, round: 2, delayMs: 4500 },
+    { type: MESSAGE.deceiverReady, round: 2 },
     { type: MESSAGE.chat, text: 'hey whats up' },
     { type: MESSAGE.typing },
-    { type: MESSAGE.verdict, round: 0, verdict: VERDICT.ai, wasAi: true },
+    { type: MESSAGE.chatOver, round: 0 },
+    { type: MESSAGE.verdict, round: 0, verdict: VERDICT.ai },
+    { type: MESSAGE.reveal, round: 0, verdict: VERDICT.ai, truth: VERDICT.human },
     { type: MESSAGE.ready, round: 1 },
     { type: MESSAGE.bye },
   ];
   for (const message of samples) assert.deepEqual(decodeMessage(encodeMessage(message)), message);
 
+  const rejects = (message) => assert.equal(decodeMessage(JSON.stringify(message)), null, JSON.stringify(message));
   assert.equal(decodeMessage('not json'), null);
-  assert.equal(decodeMessage(JSON.stringify({ type: 'hack' })), null);
-  assert.equal(decodeMessage(JSON.stringify({ type: MESSAGE.chat, text: '   ' })), null);
-  assert.equal(decodeMessage(JSON.stringify({ type: MESSAGE.chat, text: 'x'.repeat(500) })), null);
-  assert.equal(decodeMessage(JSON.stringify({ type: MESSAGE.verdict, round: -1, verdict: 'ai', wasAi: true })), null);
-  assert.throws(() => encodeMessage({ type: MESSAGE.start, round: 'one' }));
+  rejects({ type: 'hack' });
+  rejects({ type: MESSAGE.hello, version: PROTOCOL_VERSION, role: 'referee' });
+  rejects({ type: MESSAGE.hello, version: 1, role: ROLE.judge });
+  rejects({ type: MESSAGE.matchmake, round: 0, delayMs: 0 });
+  rejects({ type: MESSAGE.chat, text: '   ' });
+  rejects({ type: MESSAGE.chat, text: 'x'.repeat(500) });
+  rejects({ type: MESSAGE.verdict, round: -1, verdict: 'ai' });
+  rejects({ type: MESSAGE.reveal, round: 0, verdict: 'ai' });
+  assert.throws(() => encodeMessage({ type: MESSAGE.ready, round: 'one' }));
 });
 
 /* ---------- Difficulty ---------- */
 
-test('difficulty ramps monotonically from the first round to the last, within fair bounds', () => {
-  const rounds = Array.from({ length: TOTAL_ROUNDS }, (_, round) => tuningForRound(round));
+test('difficulty ramps over the first rounds, then holds within fair bounds', () => {
+  const rounds = Array.from({ length: 4 }, (_, round) => tuningForRound(round));
   for (let i = 1; i < rounds.length; i += 1) {
     assert.ok(rounds[i].roundSeconds < rounds[i - 1].roundSeconds);
-    assert.ok(rounds[i].judgeBar > rounds[i - 1].judgeBar);
     assert.ok(rounds[i].personaPolish > rounds[i - 1].personaPolish);
-    assert.ok(rounds[i].autopilotChance > rounds[i - 1].autopilotChance);
   }
-  assert.ok(rounds[TOTAL_ROUNDS - 1].roundSeconds >= 60);
-  assert.ok(rounds[TOTAL_ROUNDS - 1].judgeBar < 1 && rounds[0].judgeBar > 0);
-  assert.ok(rounds[TOTAL_ROUNDS - 1].autopilotChance < 0.5 && rounds[0].autopilotChance > 0);
-});
-
-/* ---------- Judge ---------- */
-
-test('the judge finds casual chat human and assistant prose robotic', () => {
-  const casual = ['hey lol', 'nah im from ohio, u?', 'haha same, kinda tired tbh', 'what do u do for fun'];
-  const formal = [
-    'Certainly! I would be happy to assist you with any questions you might have about this topic today.',
-    'Additionally, it is important to consider many different perspectives when discussing such matters in depth.',
-  ];
-  assert.ok(humanityScore(casual) > 0.8);
-  assert.ok(humanityScore(formal) < 0.2);
-  assert.equal(humanityScore([]), 0);
-  assert.equal(judgeVerdict(casual, tuningForRound(TOTAL_ROUNDS - 1).judgeBar), VERDICT.human);
-  assert.equal(judgeVerdict(formal, tuningForRound(0).judgeBar), VERDICT.ai);
-  assert.equal(judgeVerdict([], tuningForRound(0).judgeBar), VERDICT.ai);
+  assert.deepEqual(tuningForRound(50), tuningForRound(3), 'capped: unlimited rounds stay fair');
+  assert.ok(tuningForRound(0).roundSeconds <= 120 && tuningForRound(50).roundSeconds >= 60);
+  assert.ok(tuningForRound(0).personaPolish > 0 && tuningForRound(50).personaPolish <= 1);
 });
 
 /* ---------- Persona and fallback bot ---------- */

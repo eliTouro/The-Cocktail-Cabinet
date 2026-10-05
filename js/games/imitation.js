@@ -1,17 +1,15 @@
 import { createRng } from '../core/rng.js';
-import { runAiSession } from './imitation/aiSession.js';
-import { runHumanSession } from './imitation/humanSession.js';
+import { runSession } from './imitation/session.js';
 import { createView } from './imitation/view.js';
 
-const SESSIONS = { ai: runAiSession, human: runHumanSession };
-
 /**
- * Imitation: a chat Turing test. 'ai' pairs you with a language model running in your browser
- * after simulated matchmaking; 'human' connects two browsers directly over WebRTC.
+ * Imitation: a chat Turing test between two friends in two browsers. The mode is your role:
+ * 'judge' questions the other side and calls it, human or AI; 'deceiver' secretly answers each
+ * round themselves or lets a language model in their browser answer for them.
  */
 export function mount(container, { mode }) {
   const view = createView(container);
-  const session = SESSIONS[mode.id](view, createRng());
+  const session = runSession(view, createRng(), mode.id);
 
   return {
     destroy() {

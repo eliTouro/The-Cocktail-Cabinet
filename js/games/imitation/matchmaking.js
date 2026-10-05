@@ -1,7 +1,7 @@
 import { MATCHMAKING } from './config.js';
 
 const OPENING_LINES = [
-  'Looking for someone to chat with…',
+  'Looking for your partner…',
   'Checking who is online…',
 ];
 
@@ -13,17 +13,21 @@ const MIDDLE_LINES = [
   (rng) => `Trying another match (${rng.int(2, 6)} in the queue)`,
 ];
 
-const CLOSING_LINE = 'Found someone. Saying hello…';
-
-export const STILL_SEARCHING_LINE = 'Busy night. Still looking…';
+const CLOSING_LINE = 'Found them. Saying hello…';
 
 /**
- * A believable search: a random wait between MATCHMAKING.minSeconds and maxSeconds, with a status
- * line every few seconds. Pure: the same rng seed gives the same schedule.
- * Returns { delayMs, statuses: [{ atMs, text }] } with the closing line at delayMs.
+ * How long this round's simulated search lasts. The deceiver's browser picks it and sends it to
+ * the judge's, so both screens finish searching together.
  */
-export function planMatchmaking(rng) {
-  const delayMs = Math.round(rng.range(MATCHMAKING.minSeconds, MATCHMAKING.maxSeconds) * 1000);
+export function pickMatchmakingDelayMs(rng) {
+  return Math.round(rng.range(MATCHMAKING.minSeconds, MATCHMAKING.maxSeconds) * 1000);
+}
+
+/**
+ * A believable search lasting `delayMs`: a status line every few seconds, the closing line at
+ * delayMs. Pure: the same rng seed gives the same lines. Returns [{ atMs, text }].
+ */
+export function planMatchmaking(rng, delayMs) {
   const stepMs = MATCHMAKING.statusEverySeconds * 1000;
   const statuses = [{ atMs: 0, text: rng.pick(OPENING_LINES) }];
   const middle = shuffled(MIDDLE_LINES, rng);
@@ -31,7 +35,7 @@ export function planMatchmaking(rng) {
     statuses.push({ atMs, text: middle[index % middle.length](rng) });
   }
   statuses.push({ atMs: delayMs, text: CLOSING_LINE });
-  return { delayMs, statuses };
+  return statuses;
 }
 
 function shuffled(items, rng) {

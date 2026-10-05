@@ -1,0 +1,373 @@
+/* Imitation: a chat inside the stage. Loaded by js/games/imitation/view.js only while the game runs.
+   The partner stays an unmarked violet until the reveal, when its bubbles take on the colour of
+   what it really was: amber for a human, cyan for an AI. */
+
+.imx {
+  --unknown: #b49cff;
+  --unknown-soft: rgba(180, 156, 255, 0.12);
+  --spring: var(--ease-spring);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  font-family: var(--font-body);
+  color: var(--text);
+}
+
+.imx[data-truth="human"] { --reveal: var(--human); --reveal-soft: var(--human-soft); }
+.imx[data-truth="ai"] { --reveal: var(--computer); --reveal-soft: var(--computer-soft); }
+
+/* ---------- Header ---------- */
+
+.imx-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--raised), transparent);
+}
+
+.imx-avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: 1px dashed var(--unknown);
+  color: var(--unknown);
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.imx[data-truth="human"] .imx-avatar,
+.imx[data-truth="ai"] .imx-avatar {
+  border-style: solid;
+  border-color: var(--reveal);
+  color: var(--reveal);
+  box-shadow: 0 0 18px -4px var(--reveal);
+}
+
+.imx-head__who { display: grid; line-height: 1.2; min-width: 0; }
+.imx-head__name { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
+.imx-head__status { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.imx-head__status.is-typing { color: var(--unknown); }
+
+.imx-head__meta {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.imx-head__clock { color: var(--text); min-width: 2.5rem; text-align: right; }
+.imx.is-hurry .imx-head__clock { color: var(--human); }
+
+.imx-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+}
+
+.imx-timer__fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--unknown), var(--human));
+  transform-origin: left;
+  transform: scaleX(0);
+  transition: transform 0.25s linear;
+}
+
+/* ---------- Transcript ---------- */
+
+.imx-log {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.imx-msg {
+  position: relative;
+  max-width: min(78%, 30rem);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  animation: imx-pop 0.4s var(--spring) backwards;
+}
+
+.imx-msg--me {
+  align-self: flex-end;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-bottom-right-radius: 3px;
+}
+
+.imx-msg--partner {
+  align-self: flex-start;
+  isolation: isolate;
+  background: var(--unknown-soft);
+  border: 1px solid rgba(180, 156, 255, 0.28);
+  border-bottom-left-radius: 3px;
+}
+
+/* The reveal layer: fades in over the violet once the truth is known. */
+.imx-msg--partner::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  border: 1px solid var(--reveal, transparent);
+  background: var(--reveal-soft, transparent);
+  box-shadow: 0 8px 22px -14px var(--reveal, transparent);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+.imx[data-truth="human"] .imx-msg--partner::before,
+.imx[data-truth="ai"] .imx-msg--partner::before { opacity: 1; }
+
+.imx-msg--system {
+  align-self: center;
+  max-width: 34rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@keyframes imx-pop {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+
+/* ---------- Dock: composer, verdict, reveal ---------- */
+
+.imx-dock {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--line);
+  background: linear-gradient(0deg, var(--raised), transparent);
+}
+
+.imx-dock:empty { display: none; }
+
+.imx-composer { display: flex; gap: var(--space-2); }
+
+.imx-input,
+.imx-code {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--text);
+  font: inherit;
+}
+
+.imx-input:focus-visible,
+.imx-code:focus-visible { outline: 2px solid var(--unknown); outline-offset: 1px; }
+.imx-input:disabled { opacity: 0.6; }
+
+.imx-code {
+  width: 100%;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.imx-code--line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.imx-send,
+.imx-button {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.25s var(--spring), opacity 0.2s ease;
+}
+
+.imx-send,
+.imx-button--solid {
+  background: var(--tone, var(--unknown));
+  color: var(--ink);
+  box-shadow: 0 10px 24px -14px var(--tone, var(--unknown));
+}
+
+.imx-button--ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.imx-button--ghost.is-done { border-color: var(--computer); color: var(--computer); }
+
+.imx-send:hover:not(:disabled),
+.imx-button:hover:not(:disabled) { transform: translateY(-2px); }
+.imx-send:active:not(:disabled),
+.imx-button:active:not(:disabled) { transform: translateY(0) scale(0.96); }
+.imx-send:focus-visible,
+.imx-button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.imx-send:disabled,
+.imx-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.imx-verdict,
+.imx-reveal { display: grid; gap: var(--space-3); justify-items: center; text-align: center; }
+
+.imx-verdict__ask { margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
+.imx-verdict__choices { display: flex; gap: var(--space-3); }
+
+.imx-verdict__choices .imx-button {
+  min-width: 7.5rem;
+  padding-block: var(--space-3);
+  background: var(--tone-soft);
+  border-color: var(--tone);
+  color: var(--tone);
+  font-size: 0.9375rem;
+}
+
+.imx-reveal__lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.imx-reveal__lines li:first-child { color: var(--reveal, var(--text)); font-weight: 600; }
+
+.imx-dock__note {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* ---------- Cards: intro, matchmaking, lobby, results ---------- */
+
+.imx-card {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  overflow-y: auto;
+  text-align: center;
+  background:
+    radial-gradient(30rem 18rem at 50% 0%, rgba(180, 156, 255, 0.14), transparent 70%),
+    rgba(14, 11, 21, 0.94);
+}
+
+.imx-card[hidden] { display: none; }
+.imx-card > * { margin: 0; max-width: 34rem; }
+
+.imx-card__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--unknown);
+}
+
+.imx-card__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.5rem, 4.5vw, 2.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+.imx-card__text { color: var(--muted); font-size: 0.9375rem; line-height: 1.6; }
+
+.imx-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.imx-card > .imx-card__actions { margin-top: var(--space-2); }
+
+.imx-join,
+.imx-label { display: grid; gap: var(--space-2); width: 100%; justify-items: center; }
+.imx-join { margin-top: var(--space-2); padding-top: var(--space-4); border-top: 1px solid var(--line); }
+.imx-label { font-size: 0.875rem; color: var(--muted); }
+
+.imx-card .imx-code { width: min(100%, 34rem); }
+
+.imx-error { min-height: 1.5em; color: #ff8f8f; font-size: 0.875rem; }
+.imx-error:empty { min-height: 0; }
+
+.imx-search__status { font-family: var(--font-mono); font-size: 0.875rem; color: var(--text); }
+.imx-search__warm { font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); min-height: 1.2em; }
+
+/* A sweeping ring while we "look" for someone. */
+.imx-radar {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  border: 1px solid rgba(180, 156, 255, 0.35);
+}
+
+.imx-radar::before,
+.imx-radar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.imx-radar::before {
+  background: conic-gradient(from 0deg, transparent 70%, rgba(180, 156, 255, 0.55));
+  animation: imx-sweep 1.8s linear infinite;
+}
+
+.imx-radar::after {
+  inset: 40%;
+  background: var(--unknown);
+  box-shadow: 0 0 16px var(--unknown);
+  animation: imx-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes imx-sweep { to { transform: rotate(360deg); } }
+@keyframes imx-pulse { 50% { opacity: 0.4; transform: scale(0.8); } }
+
+/* Phones: a taller stage so the chat has room. */
+@media (max-width: 40rem) {
+  .stage.imx-stage { aspect-ratio: 3 / 4; max-height: 80vh; }
+  .imx-head { padding-inline: var(--space-3); }
+  .imx-log { padding: var(--space-3); }
+  .imx-card { padding: var(--space-4); }
+}

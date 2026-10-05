@@ -32,9 +32,9 @@ function createFeedbackDots(count) {
 
 function paintFeedback(dots, feedback) {
   dots.forEach((dot, index) => {
-    const isBlack = feedback && index < feedback.black;
-    const isWhite = feedback && !isBlack && index < feedback.black + feedback.white;
-    dot.classList.toggle('dot-peg--black', Boolean(isBlack));
+    const isExact = feedback && index < feedback.black;
+    const isWhite = feedback && !isExact && index < feedback.black + feedback.white;
+    dot.classList.toggle('dot-peg--exact', Boolean(isExact));
     dot.classList.toggle('dot-peg--white', Boolean(isWhite));
   });
 }
@@ -75,7 +75,7 @@ function createBoardRow(settings, number, onSlot) {
   return { element, slots, dots };
 }
 
-const describeFeedback = ({ black, white }) => `${black} black, ${white} white`;
+const describeFeedback = ({ black, white }) => `${black} red, ${white} white`;
 
 /**
  * The play surface. It only draws what it is told and reports clicks through `handlers`

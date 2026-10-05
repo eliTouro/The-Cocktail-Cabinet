@@ -16,14 +16,14 @@ export const FINAL_LEVEL = 10;
 /**
  * Board curve by level (1-based), linear then rounded:
  *   pegs     4 -> 5   (the fifth peg appears around level 6)
- *   colours  4 -> 7   (a new colour about every three levels)
+ *   colours  6 -> 7   (the seventh colour appears around level 6)
  *   guesses  12 -> 8  (about one fewer guess every 2-3 levels)
  * Repeated colours are allowed from REPEATS_FROM_LEVEL, which is the biggest single jump in
  * difficulty, so it arrives only after two levels of warm-up.
  */
 const BOARD_RAMP = {
   pegs: { from: 4, to: 5 },
-  colours: { from: 4, to: 7 },
+  colours: { from: 6, to: 7 },
   guesses: { from: 12, to: 8 },
 };
 const REPEATS_FROM_LEVEL = 3;

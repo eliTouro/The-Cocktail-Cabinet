@@ -82,7 +82,7 @@ export const GAMES = [
     name: 'Mastermind',
     tagline: 'Crack the hidden colour code, or hide one the computer cannot crack.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Break the code', label: 'Break the code', blurb: 'The computer hides a colour code. Use its black and white pegs to crack it before you run out of guesses.' },
+      { id: 'human', tone: 'human', short: 'Break the code', label: 'Break the code', blurb: 'The computer hides a colour code. Use its red and white pegs to crack it before you run out of guesses.' },
       { id: 'computer', tone: 'computer', short: 'Make the code', label: 'Make the code', blurb: 'You hide a colour code and the computer tries to crack it from the pegs alone. Stump it to reach the next level.' },
     ],
     load: () => import('./games/mastermind.js'),

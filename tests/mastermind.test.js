@@ -96,7 +96,7 @@ test('the list of all codes has the right size', () => {
 
 test('level settings never get easier and use the available colours', () => {
   let previous = levelSettings(1);
-  assert.deepEqual(previous, { pegs: 4, colours: 4, guesses: 12, repeats: false });
+  assert.deepEqual(previous, { pegs: 4, colours: 6, guesses: 12, repeats: false });
   for (let level = 2; level <= FINAL_LEVEL + 3; level += 1) {
     const current = levelSettings(level);
     assert.ok(current.pegs >= previous.pegs);

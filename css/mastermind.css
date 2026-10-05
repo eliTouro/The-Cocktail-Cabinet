@@ -78,9 +78,9 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.dot-peg--black {
-  background: #000;
-  box-shadow: inset 0 0 0 1.5px var(--text);
+.dot-peg--exact {
+  background: #ff2d3f;
+  box-shadow: 0 0 6px rgba(255, 45, 63, 0.6);
 }
 
 .dot-peg--white {

@@ -17,8 +17,8 @@ const REJECTIONS = {
 };
 
 const INTRO = {
-  human: 'The computer has hidden a colour code. Click a colour, or press its number key, then press Enter to guess. A black peg is the right colour in the right place; a white peg is the right colour in the wrong place.',
-  computer: 'Hide a colour code, or press Random code, then lock it in. The computer cracks it from black and white pegs alone. Use up its guesses and you move up a level.',
+  human: 'The computer has hidden a colour code. Click a colour, or press its number key, then press Enter to guess. A red peg is the right colour in the right place; a white peg is the right colour in the wrong place.',
+  computer: 'Hide a colour code, or press Random code, then lock it in. The computer cracks it from red and white pegs alone. Use up its guesses and you move up a level.',
 };
 
 const EDIT_KEYS = ['ArrowLeft', 'ArrowRight', 'Backspace', 'Delete'];
@@ -150,7 +150,7 @@ export function mount(container, { mode }) {
       return;
     }
     const last = run.round.history.at(-1).feedback;
-    view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'black peg')}, ${plural(last.white, 'white peg')}.`);
+    view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'red peg')}, ${plural(last.white, 'white peg')}.`);
     entry.reset();
     refresh();
     if (run.finished) finishLevel();
@@ -179,7 +179,7 @@ export function mount(container, { mode }) {
     pendingGuess = null;
     refresh();
     const last = run.round.history.at(-1).feedback;
-    view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'black peg')}, ${plural(last.white, 'white peg')}.`);
+    view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'red peg')}, ${plural(last.white, 'white peg')}.`);
     if (run.finished) finishLevel();
     else schedule(computerTurn, PAUSE_MS.think);
   }

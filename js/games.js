@@ -70,10 +70,10 @@ export const GAMES = [
   {
     id: 'imitation',
     name: 'Imitation',
-    tagline: 'Chat, then work out who is on the other end.',
+    tagline: 'Judge or deceiver: can you tell a person from an AI?',
     modes: [
-      { id: 'ai', tone: 'computer', short: 'Vs the AI', label: 'Play the AI', blurb: 'Chat with a stranger, then call it: human or AI? An open language model runs in your browser. Score by reading it right and by sounding human yourself.' },
-      { id: 'human', tone: 'human', short: 'Vs a person', label: 'Play another person', blurb: 'Send a friend a link and chat browser to browser. Either of you may secretly be on autopilot. Guess who was really typing.' },
+      { id: 'judge', tone: 'human', short: 'Judge', label: 'Be the judge', blurb: 'Question your friend and decide: are you talking to a person or an AI? They secretly choose whether to answer themselves or let an AI reply.' },
+      { id: 'deceiver', tone: 'computer', short: 'Deceiver', label: 'Be the deceiver', blurb: 'Your friend is the judge. Answer yourself or switch on AI replies, and try to fool them.' },
     ],
     load: () => import('./games/imitation.js'),
   },

@@ -243,6 +243,50 @@ test('the stranger swaps a giveaway from the model for a scripted line', async (
   assert.doesNotMatch(said[0], /assist|help|\bai\b/i);
 });
 
+test('the stranger re-rolls a rejected model line before falling back to the script', async () => {
+  const timers = createFakeTimers();
+  const rng = createRng(8);
+  const replies = ['How can I assist you today?', 'inception is my fave'];
+  const said = [];
+  const stranger = createStranger({
+    getEngine: () => ({ reply: async () => replies.shift() ?? 'lol' }),
+    persona: { ...createPersona(rng, 0.5), lowercase: true, slangChance: 0, typoChance: 0 },
+    rng,
+    timers,
+    onTyping: () => {},
+    onSay: (text) => said.push(text),
+  });
+  stranger.hear('inception or star wars');
+  await timers.advance(2 * TYPING.maxMs);
+  assert.deepEqual(said, ['inception is my fave']);
+});
+
+test('a prompt always ends on the human turn, even when they type while the stranger is replying', async () => {
+  const timers = createFakeTimers();
+  const rng = createRng(3);
+  const persona = createPersona(rng, 0.5);
+  const lastRoles = [];
+  const stranger = createStranger({
+    getEngine: () => ({
+      reply: async (history) => {
+        lastRoles.push(toPromptMessages(history, persona).at(-1).role);
+        return 'inception for sure';
+      },
+    }),
+    persona,
+    rng,
+    timers,
+    onTyping: () => {},
+    onSay: () => {},
+  });
+  stranger.hear('hello');
+  stranger.hear('are you a robot');
+  stranger.hear('what movies do you like');
+  await timers.advance(6 * TYPING.maxMs);
+  assert.ok(lastRoles.length >= 2, 'the stranger answers the messages typed while it was busy');
+  assert.deepEqual([...new Set(lastRoles)], ['user']);
+});
+
 test('humanize lowercases and drops the full stop for a casual persona', () => {
   const persona = { ...createPersona(createRng(1), 1), lowercase: true, slangChance: 0, typoChance: 0 };
   assert.equal(humanize('I live in Leeds.', persona, createRng(1)), 'i live in leeds');
@@ -255,9 +299,19 @@ test('prompt turns alternate and start with the user', () => {
     { role: 'other', text: 'hi' },
     { role: 'other', text: 'where are you from' },
   ], persona);
+  const roles = messages.slice(1).map((m) => m.role);
   assert.equal(messages[0].role, 'system');
-  assert.deepEqual(messages.slice(1).map((m) => m.role), ['user', 'assistant', 'user']);
-  assert.equal(messages[3].content, 'hi\nwhere are you from');
+  assert.equal(roles[0], 'user');
+  roles.slice(1).forEach((role, index) => assert.notEqual(role, roles[index]));
+  assert.deepEqual(roles.slice(-3), ['user', 'assistant', 'user']);
+  assert.equal(messages.at(-1).content, 'hi\nwhere are you from');
+});
+
+test('example turns come before the real chat and use the persona job', () => {
+  const persona = { ...createPersona(createRng(2), 0.5), job: 'line cook' };
+  const messages = toPromptMessages([{ role: 'other', text: 'hello' }], persona);
+  assert.ok(messages.some((m) => m.role === 'assistant' && m.content.includes('line cook')));
+  assert.equal(messages.at(-1).content, 'hello');
 });
 
 test('typing delay grows with message length and stays capped', () => {

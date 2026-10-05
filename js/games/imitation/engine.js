@@ -1,4 +1,4 @@
-import { REPLY_MAX_TOKENS, REPLY_TEMPERATURE, WEBLLM_MODEL, WEBLLM_URL } from './config.js';
+import { REPLY_MAX_TOKENS, REPLY_SAMPLING, WEBLLM_MODEL, WEBLLM_URL } from './config.js';
 import { createFallbackBot } from './fallbackBot.js';
 import { toPromptMessages } from './persona.js';
 
@@ -63,7 +63,7 @@ function createModelEngine(engine) {
         const completion = await engine.chat.completions.create({
           messages: toPromptMessages(history, persona),
           max_tokens: REPLY_MAX_TOKENS,
-          temperature: REPLY_TEMPERATURE,
+          ...REPLY_SAMPLING,
         });
         return completion.choices[0]?.message?.content ?? '';
       } finally {

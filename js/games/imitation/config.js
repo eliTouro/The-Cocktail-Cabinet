@@ -54,9 +54,17 @@ export const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
 export const ICE_GATHER_TIMEOUT_MS = 4000;
 
 export const WEBLLM_URL = 'https://esm.run/@mlc-ai/web-llm@0.2.85';
-export const WEBLLM_MODEL = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC';
-export const REPLY_MAX_TOKENS = 48;
-export const REPLY_TEMPERATURE = 0.9;
+/**
+ * Llama 3.2 1B (about 0.9 GB of GPU memory) chats far more coherently than the 0.5B model it
+ * replaced. The 1.5B and 3B models were tried and crashed on an integrated GPU, so 1B is the
+ * largest that loads reliably.
+ */
+export const WEBLLM_MODEL = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+export const REPLY_MAX_TOKENS = 30;
+/** Low temperature, a nucleus cut and a repeat penalty keep a 1B model from rambling or looping. */
+export const REPLY_SAMPLING = { temperature: 0.6, top_p: 0.9, frequency_penalty: 0.6 };
+/** Tries per reply before the scripted bot steps in; a rejected line is usually fixed by a re-roll. */
+export const REPLY_ATTEMPTS = 3;
 /** Only the most recent messages go into the prompt; small models lose the plot on long context. */
 export const PROMPT_HISTORY_LIMIT = 12;
 

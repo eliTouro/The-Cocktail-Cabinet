@@ -1,4 +1,4 @@
-import { IDLE_NUDGE_MS, OPENER } from './config.js';
+import { IDLE_NUDGE_MS, OPENER, REPLY_ATTEMPTS } from './config.js';
 import { createFallbackBot } from './fallbackBot.js';
 import { cleanReply, humanize, typingDelayMs } from './persona.js';
 
@@ -20,6 +20,8 @@ const realTimers = {
 export function createStranger({ getEngine, persona, rng, onTyping, onSay, timers = realTimers }) {
   const script = createFallbackBot(rng);
   const history = [];
+  /** Messages heard while a reply was being "typed": they join the history after that reply. */
+  const heardWhileBusy = [];
   const pending = new Set();
   let abort = null;
   let isBusy = false;
@@ -77,11 +79,16 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
     later(() => deliver(text), remaining);
   }
 
-  /** The engine's line, or the scripted bot's when the engine fails or gives the game away. */
+  /**
+   * The engine's line. A rejected line (it gave the game away) is re-rolled a few times; the
+   * scripted bot only steps in when the engine keeps failing, since its lines ignore the chat.
+   */
   async function composeLine() {
     try {
-      const line = cleanReply(await getEngine().reply([...history], persona, { signal: abort.signal }));
-      if (line) return line;
+      for (let attempt = 0; attempt < REPLY_ATTEMPTS; attempt += 1) {
+        const line = cleanReply(await getEngine().reply([...history], persona, { signal: abort.signal }));
+        if (line) return line;
+      }
     } catch {
       // An interrupted or failed generation falls through to the script.
     }
@@ -92,6 +99,7 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
     onTyping(false);
     isBusy = false;
     say(text);
+    heardWhileBusy.splice(0).forEach((heard) => history.push({ role: 'other', text: heard }));
     if (owesReply) respond();
   }
 
@@ -104,7 +112,8 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
       if (isStopped) return;
       if (openerTimer !== null) cancel(openerTimer);
       openerTimer = null;
-      history.push({ role: 'other', text });
+      if (isBusy) heardWhileBusy.push(text);
+      else history.push({ role: 'other', text });
       restartNudgeTimer();
       respond();
     },

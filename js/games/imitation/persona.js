@@ -40,18 +40,37 @@ export function createPersona(rng, polish) {
 
 export function buildSystemPrompt(persona) {
   return [
-    `You are a ${persona.age} year old from ${persona.place} chatting with a stranger on an anonymous chat site.`,
-    `You do ${persona.job}, you are into ${persona.hobby}, and you feel ${persona.mood}.`,
-    'Reply like a real person texting: one short line, under 12 words, casual, lowercase, no emojis, no lists.',
-    'You are not here to help anyone. Ask a question back sometimes.',
-    'Never say you are an AI, a bot or an assistant; if asked, laugh it off.',
-    `Your style: "hey", "lol not much, kinda bored", "im from ${persona.place} hbu", "haha no im just slow at typing".`,
+    `You are a ${persona.age} year old from ${persona.place}, ${persona.job}, into ${persona.hobby}, feeling ${persona.mood}.`,
+    'You are texting a random stranger on an anonymous chat app.',
+    `Text exactly like a real ${persona.age} year old: all lowercase, short (usually 3 to 10 words), slang and abbreviations, no full stop at the end, no emojis.`,
+    'Answer what they actually ask, directly, with a specific opinion (name real movies, places, foods).',
+    'Ask them something back about one time in three.',
+    'Never offer help, never write more than two short sentences.',
   ].join(' ');
 }
 
 /**
- * Chat messages for an instruct model: the persona as system prompt, recent history as turns.
- * Turns must alternate user/assistant and start with the user, so runs of messages are merged.
+ * Example exchanges placed before the real chat. Small models copy the register of the turns
+ * they see far more reliably than they follow instructions; these also cover "are you a bot",
+ * so the model has seen a casual deflection instead of an assistant's apology.
+ */
+function exampleTurns(persona) {
+  return [
+    ['hey', 'hey whats up'],
+    ['what do u do', `${persona.job} lol. u?`],
+    ['whats your fav food', 'tacos easily. u?'],
+    ['r u a bot', 'lol no. do i sound like one'],
+    ['fav show', 'the office, rewatched it like 4 times'],
+  ].flatMap(([question, answer]) => [
+    { role: 'user', content: question },
+    { role: 'assistant', content: answer },
+  ]);
+}
+
+/**
+ * Chat messages for an instruct model: the persona as system prompt, example turns, then the
+ * recent history. Turns must alternate user/assistant and start with the user, so runs of
+ * messages are merged.
  */
 export function toPromptMessages(history, persona) {
   const turns = [];
@@ -62,7 +81,7 @@ export function toPromptMessages(history, persona) {
     else turns.push({ role: speaker, content: text });
   }
   if (turns.length === 0 || turns[0].role === 'assistant') turns.unshift({ role: 'user', content: '(you are now connected, say hi)' });
-  return [{ role: 'system', content: buildSystemPrompt(persona) }, ...turns];
+  return [{ role: 'system', content: buildSystemPrompt(persona) }, ...exampleTurns(persona), ...turns];
 }
 
 /** One clean chat line from raw model output, or null if it would give the game away. */

@@ -1,0 +1,273 @@
+/* Mastermind. Loaded when the game mounts and removed when it is destroyed.
+   --tone is the side doing the guessing (amber = you, cyan = the computer);
+   --human always marks what you are editing. */
+
+.stage.mm-stage {
+  display: block;
+  --peg-size: clamp(2.1rem, 4.6vw, 2.9rem);
+}
+
+.mm {
+  --row-gap: 4px;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  padding: 2.6rem var(--space-5) var(--space-4);
+}
+
+/* ---------- Board ---------- */
+
+.mm-board {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  gap: var(--row-gap);
+}
+
+.mm-row {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 3px 0 0 transparent;
+}
+
+.mm-row.is-current {
+  background: var(--tone-soft);
+  box-shadow: inset 3px 0 0 var(--tone);
+}
+
+.mm-row__number {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.mm-row__slots {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 100%;
+  min-width: 0;
+}
+
+.mm-row__slots .peg {
+  height: min(78%, var(--peg-size));
+  font-size: 0.75rem;
+}
+
+.mm-row__feedback {
+  display: grid;
+  grid-template-columns: repeat(var(--columns), 0.7rem);
+  gap: 3px;
+}
+
+.dot-peg {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dot-peg--black {
+  background: #000;
+  box-shadow: inset 0 0 0 1.5px var(--text);
+}
+
+.dot-peg--white {
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.55);
+}
+
+/* ---------- Pegs ---------- */
+
+.peg {
+  position: relative;
+  flex: none;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.55), transparent 42%),
+    var(--peg);
+  color: rgba(14, 11, 21, 0.78);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  line-height: 1;
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.35),
+    0 8px 14px -6px color-mix(in srgb, var(--peg) 70%, transparent);
+  transition: transform 0.2s var(--ease-spring);
+}
+
+.peg:disabled { cursor: default; }
+
+.peg--empty {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.16);
+  color: var(--muted);
+}
+
+.peg--slot:not(:disabled) { cursor: pointer; }
+.peg--slot:not(:disabled):hover { transform: scale(1.08); }
+.peg--slot:not(:disabled):active { transform: scale(0.92); }
+.peg--slot.is-cursor { outline: 2px solid var(--human); outline-offset: 3px; }
+.peg:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+.peg--swatch {
+  width: var(--peg-size);
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.peg--swatch::after {
+  content: attr(data-key);
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  min-width: 1rem;
+  padding: 1px 3px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--text);
+  font-size: 0.625rem;
+  line-height: 1.2;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.peg--swatch:hover { transform: translateY(-3px) scale(1.06); }
+.peg--swatch:active { transform: scale(0.9); }
+
+/* ---------- Side panel ---------- */
+
+.mm-panel {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+.mm-secret {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(170deg, var(--raised), var(--surface));
+  box-shadow: var(--shadow-raised);
+}
+
+.mm-secret__slots { display: flex; gap: var(--space-2); }
+.mm-secret .peg { width: calc(var(--peg-size) * 0.85); font-size: 0.8125rem; }
+
+.mm-label, .mm-rules {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.mm-message {
+  min-height: 3.2em;
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.mm-message.is-warning { color: #ff8da0; }
+
+.mm-thinking {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--computer);
+}
+
+.mm-thinking[hidden], .mm-palette[hidden] { display: none; }
+
+.mm-thinking__dots i {
+  display: inline-block;
+  width: 0.3rem;
+  height: 0.3rem;
+  margin-left: 0.25rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: mm-pulse 1.2s ease-in-out infinite;
+}
+
+.mm-thinking__dots i:nth-child(2) { animation-delay: 0.2s; }
+.mm-thinking__dots i:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes mm-pulse {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+.mm-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-1);
+}
+
+.mm-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.mm-button {
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-spring);
+}
+
+.mm-button--primary {
+  border-color: transparent;
+  background: var(--human);
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.mm-button:hover { transform: translateY(-2px); }
+.mm-button:active { transform: translateY(0) scale(0.96); }
+.mm-button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* ---------- Phones: one column, stage grows to fit ---------- */
+
+@media (max-width: 40rem) {
+  .stage.mm-stage {
+    aspect-ratio: auto;
+    min-height: 34rem;
+    --peg-size: 2.4rem;
+  }
+
+  .mm {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    padding-inline: var(--space-3);
+  }
+
+  /* Controls first, so the palette and Submit sit above the fold while the board scrolls. */
+  .mm-panel { order: -1; }
+  .mm-board { grid-template-rows: repeat(var(--rows), 2.4rem); }
+  .mm-row__slots .peg { height: 1.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .peg, .mm-button { transition: none; }
+  .mm-thinking__dots i { animation: none; opacity: 0.8; }
+}

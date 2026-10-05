@@ -14,8 +14,11 @@ const SHAPES = {
   'missile-command':
     '<path d="M4 43h40"/><path d="M10 43L22 17M38 43L26 17"/><circle cx="24" cy="11" r="5"/>',
   imitation: '<path d="M6 7h22v14H16l-6 5v-5H6z"/><path d="M20 27h22v12h-4v5l-6-5H20z"/>',
-  wildcard:
-    '<path d="M17 17a7 7 0 1 1 10 6c-2 1.5-3 2.5-3 5"/><circle cx="24" cy="38" r="2" fill="currentColor" stroke="none"/>',
+  mastermind:
+    '<circle cx="12" cy="13" r="5"/><circle cx="28" cy="13" r="5" fill="currentColor" stroke="none"/>' +
+    '<circle cx="12" cy="33" r="5" fill="currentColor" stroke="none"/><circle cx="28" cy="33" r="5"/>' +
+    '<circle cx="40" cy="10" r="2" fill="currentColor" stroke="none"/><circle cx="40" cy="17" r="2"/>' +
+    '<circle cx="40" cy="30" r="2"/><circle cx="40" cy="37" r="2" fill="currentColor" stroke="none"/>',
 };
 
 export function createIcon(gameId) {

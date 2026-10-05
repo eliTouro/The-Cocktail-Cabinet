@@ -25,7 +25,7 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
 | `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
-| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Everything but Wild Card is playable; Wild Card is a placeholder. Imitation also has `css/imitation.css` |
+| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Mastermind is the seventh game; until built, any game without real code shows a placeholder. Imitation also has `css/imitation.css` |
 | `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |

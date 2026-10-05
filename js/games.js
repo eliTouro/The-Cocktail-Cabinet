@@ -78,14 +78,14 @@ export const GAMES = [
     load: () => import('./games/imitation.js'),
   },
   {
-    id: 'wildcard',
-    name: 'Wild Card',
-    tagline: 'Game seven. Still to be chosen.',
+    id: 'mastermind',
+    name: 'Mastermind',
+    tagline: 'Crack the hidden colour code, or hide one the computer cannot crack.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Play it', label: 'Play it yourself', blurb: 'The game and its flip are still to be designed.' },
-      { id: 'computer', tone: 'computer', short: 'Flip it', label: 'Play the flip', blurb: 'The game and its flip are still to be designed.' },
+      { id: 'human', tone: 'human', short: 'Break the code', label: 'Break the code', blurb: 'The computer hides a colour code. Use its black and white pegs to crack it before you run out of guesses.' },
+      { id: 'computer', tone: 'computer', short: 'Make the code', label: 'Make the code', blurb: 'You hide a colour code and the computer tries to crack it from the pegs alone. Stump it to reach the next level.' },
     ],
-    load: () => import('./games/wildcard.js'),
+    load: () => import('./games/mastermind.js'),
   },
 ];
 

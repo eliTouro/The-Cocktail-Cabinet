@@ -72,8 +72,8 @@ export const GAMES = [
     name: 'Imitation',
     tagline: 'Chat, then work out who is on the other end.',
     modes: [
-      { id: 'ai', tone: 'computer', short: 'Vs the AI', label: 'Play the AI', blurb: 'Your opponent is an AI running in your own browser.' },
-      { id: 'human', tone: 'human', short: 'Vs a person', label: 'Play another person', blurb: 'Matched with a human in a second browser.' },
+      { id: 'ai', tone: 'computer', short: 'Vs the AI', label: 'Play the AI', blurb: 'Chat with a stranger, then call it: human or AI? An open language model runs in your browser. Score by reading it right and by sounding human yourself.' },
+      { id: 'human', tone: 'human', short: 'Vs a person', label: 'Play another person', blurb: 'Send a friend a link and chat browser to browser. Either of you may secretly be on autopilot. Guess who was really typing.' },
     ],
     load: () => import('./games/imitation.js'),
   },

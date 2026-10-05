@@ -25,7 +25,7 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
 | `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
-| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Snake, Breakout and Splat are playable; the rest are placeholders |
+| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Everything but Wild Card is playable; Wild Card is a placeholder. Imitation also has `css/imitation.css` |
 | `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |
@@ -38,7 +38,11 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | Breakout | Paddle vs a 5x10 wall, 3 lives | You slide the wall to throw off the computer's paddle; win by making it lose 3 lives |
 | Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns |
 
-In every game the computer uses the same rules, collisions and speed limits as a human, sees only
+| Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon) | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
+| Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
+| Imitation | Chat with an in-browser AI stranger (WebLLM, WebGPU) and judge human or AI | Chat with a friend over a direct WebRTC link (copy-paste codes, no relay); either of you may secretly be on autopilot |
+
+In every game (except Imitation, which is a chat) the computer uses the same rules, collisions and speed limits as a human, sees only
 what a human could see, and its skill ramps up over time so the human's challenge grows gradually.
 Tests simulate full AI games (`npm test`).
 

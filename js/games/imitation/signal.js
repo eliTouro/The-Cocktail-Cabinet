@@ -17,7 +17,7 @@ const MAX_CANDIDATES = 6;
 const FIELD = '|';
 const LIST = ';';
 const PART = ',';
-const INVITE_PATH = '#/imitation/human/join/';
+const GAME_PATH = '#/imitation/';
 
 export class SignalCodeError extends Error {}
 
@@ -46,8 +46,17 @@ export async function decodeSignal(input, expectedKind) {
   }
 }
 
-export function inviteLink(pageUrl, code) {
-  return pageUrl.split('#')[0] + INVITE_PATH + code;
+/**
+ * The link the inviter sends. It names the FRIEND's role, so the route's mode is always the
+ * viewer's own role: an inviting judge sends #/imitation/deceiver/join/<code>, and vice versa.
+ * The router only reads two segments, so "join/<code>" rides along untouched.
+ */
+export function inviteLink(pageUrl, friendRole, code) {
+  return `${pageUrl.split('#')[0]}${GAME_PATH}${friendRole}/join/${code}`;
+}
+
+export function roleHash(role) {
+  return GAME_PATH + role;
 }
 
 /** The invite code carried by a link's hash, or null. */

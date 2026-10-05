@@ -7,8 +7,8 @@ const TYPING_HOLD_MS = 3500;
 
 /**
  * The chat UI, built from DOM elements inside the stage. It only draws and reports clicks; the
- * sessions decide what happens. Two layers: a chat (header, transcript, dock) and a card that
- * covers it for intro, matchmaking, lobby and results.
+ * session decides what happens. Two layers: a chat (header, transcript, dock) and a card that
+ * covers it for the lobby, matchmaking and the deceiver's secret choice.
  */
 export function createView(container) {
   const stylesheet = h('link', { rel: 'stylesheet', href: STYLESHEET_HREF });
@@ -74,18 +74,19 @@ export function createView(container) {
       card.hidden = true;
     },
 
-    showChat({ partnerLabel, round, totalRounds }) {
+    /** `heading` labels the round in the header; `opening` is the chat's first, system line. */
+    showChat({ partnerLabel, heading, opening }) {
       root.dataset.truth = '';
       avatar.textContent = '?';
       partnerName.textContent = partnerLabel;
       status.textContent = 'online';
-      roundLabel.textContent = `Round ${round + 1}/${totalRounds}`;
-      log.replaceChildren(h('li', { class: 'imx-msg imx-msg--system' }, `You're now chatting with a ${partnerLabel.toLowerCase()}. Say hi.`));
+      roundLabel.textContent = heading;
+      log.replaceChildren(h('li', { class: 'imx-msg imx-msg--system' }, opening));
       card.hidden = true;
     },
 
-    setScores(me, partner, partnerLabel) {
-      scoreLabel.textContent = `You ${me} · ${partnerLabel} ${partner}`;
+    setScore(text) {
+      scoreLabel.textContent = text;
     },
 
     addMessage(from, text) {
@@ -124,10 +125,10 @@ export function createView(container) {
     },
 
     /** `lead` opens the question: 'Time.' when the clock ran out, 'Your call.' when ended early. */
-    showVerdict(partnerLabel, onVerdict, lead = 'Time.') {
+    showVerdict(onVerdict, lead = 'Time.') {
       const choose = (verdict) => () => onVerdict(verdict);
       dock.replaceChildren(h('div', { class: 'imx-verdict' },
-        h('p', { class: 'imx-verdict__ask' }, `${lead} Was the ${partnerLabel.toLowerCase()} a human or an AI?`),
+        h('p', { class: 'imx-verdict__ask' }, `${lead} Was your partner a human or an AI?`),
         h('div', { class: 'imx-verdict__choices' },
           actionButton({ label: 'Human', tone: 'human', onClick: choose(VERDICT.human) }),
           actionButton({ label: 'AI', tone: 'computer', onClick: choose(VERDICT.ai) }))));
@@ -138,10 +139,13 @@ export function createView(container) {
       dock.replaceChildren(h('p', { class: 'imx-dock__note' }, text));
     },
 
-    /** Colours the stranger's bubbles by what they really were: the moment of the reveal. */
-    showReveal({ partnerWasAi, lines, actionLabel, onAction }) {
-      root.dataset.truth = partnerWasAi ? 'ai' : 'human';
-      avatar.textContent = partnerWasAi ? 'AI' : 'H';
+    /**
+     * `truth` (a VERDICT) colours the partner's bubbles by what they really were: the moment of
+     * the reveal on the judge's screen. The deceiver already knows, and passes null.
+     */
+    showReveal({ truth, lines, actionLabel, onAction }) {
+      root.dataset.truth = truth ?? '';
+      if (truth) avatar.textContent = truth === VERDICT.ai ? 'AI' : 'H';
       dock.replaceChildren(h('div', { class: 'imx-reveal' },
         h('ul', { class: 'imx-reveal__lines' }, lines.map((line) => h('li', {}, line))),
         actionButton({ label: actionLabel, onClick: onAction })));

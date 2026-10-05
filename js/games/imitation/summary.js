@@ -1,27 +1,23 @@
-import { VERDICT } from './config.js';
+import { ROLE, VERDICT } from './config.js';
 
-/** Words for the reveal and the final score. Pure, so the wording is testable and in one place. */
+/** Words for the reveal. Pure, so the wording is testable and in one place. */
 
-const kindOf = (wasAi) => (wasAi ? 'an AI' : 'a human');
-const verdictWord = (verdict) => (verdict === VERDICT.human ? 'human' : 'an AI');
-const points = (value) => (value > 0 ? `+${value}` : '0');
+const whoWrote = (truth) => (truth === VERDICT.ai ? 'the AI' : 'a human');
 
-/** `result` is a match result ({ filed, score }); `partnerLabel` names the other side. */
-export function revealLines(result, partnerLabel) {
-  const { filed, score } = result;
-  const name = partnerLabel.toLowerCase();
-  return [
-    `The ${name} was ${kindOf(filed.partner.wasAi)}. You said ${verdictWord(filed.me.verdict)}: read ${points(score.me.read)}.`,
-    `The ${name} judged you ${verdictWord(filed.partner.verdict)}: pass ${points(score.me.pass)}.`,
-    `Round: you ${points(score.me.total)}, ${name} ${points(score.partner.total)}.`,
-  ];
+export function scoreLine(score) {
+  return `Judge ${score[ROLE.judge]} : Deceiver ${score[ROLE.deceiver]}`;
 }
 
-export function finalSummary(totals, partnerLabel) {
-  const name = partnerLabel.toLowerCase();
-  if (totals.me > totals.partner) return `You win, ${totals.me} to ${totals.partner}. You read the ${name} better than it read you.`;
-  if (totals.me < totals.partner) return `The ${name} wins, ${totals.partner} to ${totals.me}. Sound more like yourself next time.`;
-  return `A draw at ${totals.me} each.`;
+/** `result` is { verdict, truth, winner } from settleRound; `role` is the viewer's own role. */
+export function revealLines(result, role, score) {
+  const truthLine = role === ROLE.judge
+    ? `Your partner's replies were written by ${whoWrote(result.truth)}.`
+    : `Your replies were written by ${whoWrote(result.truth)}.`;
+  const callLine = role === ROLE.judge
+    ? `You said ${result.verdict === VERDICT.ai ? 'AI' : 'human'}.`
+    : `The judge said ${result.verdict === VERDICT.ai ? 'AI' : 'human'}.`;
+  const pointLine = result.winner === role ? 'The point is yours.' : `The point goes to the ${result.winner}.`;
+  return [truthLine, `${callLine} ${pointLine}`, scoreLine(score)];
 }
 
 /** Starts a wall-clock countdown; returns stop(). Calls onTick(secondsLeft, fractionLeft). */

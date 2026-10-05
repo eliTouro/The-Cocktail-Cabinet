@@ -44,8 +44,13 @@ export function startEngine({ rng, onProgress = () => {} }) {
 }
 
 async function loadModel(onProgress) {
-  const adapter = await navigator.gpu?.requestAdapter();
-  if (!adapter) throw new Error('This browser has no WebGPU, so the built-in chat script is used instead.');
+  if (!navigator.gpu) {
+    throw new Error('This browser has no WebGPU (it needs a recent Chrome or Edge, on https or localhost), so the built-in chat script is used instead.');
+  }
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
+    throw new Error('WebGPU is blocked on this device (check that hardware acceleration is on), so the built-in chat script is used instead.');
+  }
   const webllm = await import(WEBLLM_URL);
   const engine = await webllm.CreateMLCEngine(WEBLLM_MODEL, {
     initProgressCallback: (report) => onProgress(report.progress),

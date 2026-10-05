@@ -52,8 +52,8 @@ export const GAMES = [
     name: 'Asteroids',
     tagline: 'Rotate, thrust, and shatter the rocks.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Fly ship', label: 'Fly the ship', blurb: 'Dodge and shoot your way through drifting rocks.' },
-      { id: 'computer', tone: 'computer', short: 'Send rocks', label: 'Send the asteroids', blurb: 'The computer flies the ship. You decide which rocks come its way.' },
+      { id: 'human', tone: 'human', short: 'Fly ship', label: 'Fly the ship', blurb: 'Fly the ship, shoot the polygon rocks and survive three lives.' },
+      { id: 'computer', tone: 'computer', short: 'Send rocks', label: 'Send the rocks', blurb: 'The computer pilots. Launch rocks from the edges with a refilling budget. Destroy its 3 lives before it survives 90 seconds.' },
     ],
     load: () => import('./games/asteroids.js'),
   },

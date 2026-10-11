@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DIFFICULTY, LIVES, PADDLE, WALL } from '../js/games/breakout/config.js';
+import { LIVES, PADDLE, SECONDS_TO_HARDEST, WALL } from '../js/games/breakout/config.js';
 import {
   DT, bricksBroken, computerGame, idlePaddle, idleWall, perfectPaddle, playGame, steeringWall,
 } from './breakoutSimulation.js';
 
 const SEEDS = [1, 2, 3, 4, 5, 6, 7, 8];
-const MAX_SECONDS = DIFFICULTY.computer.seconds;
+const MAX_SECONDS = SECONDS_TO_HARDEST;
 const EPSILON = 1e-9;
 
 const sum = (values) => values.reduce((total, value) => total + value, 0);

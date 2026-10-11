@@ -1,6 +1,19 @@
+import { FIELD } from './config.js';
+import { wallBounds } from './rules.js';
+
 const LEFT_KEYS = ['ArrowLeft', 'KeyA'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD'];
 const LAUNCH_KEYS = ['Space', 'ArrowUp', 'KeyW'];
+
+/**
+ * The wall's rail is much shorter than the screen, so the pointer's position across the whole
+ * screen is spread over the rail instead of leaving most of the screen stuck at one end.
+ */
+export function railPosition(pointerX) {
+  const { min, max } = wallBounds();
+  const share = Math.min(Math.max(pointerX / FIELD.width, 0), 1);
+  return min + share * (max - min);
+}
 
 /**
  * Turns pointer and keyboard into one control: { target, direction, launch }.

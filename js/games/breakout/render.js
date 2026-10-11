@@ -5,7 +5,6 @@ const COLORS = {
   ink: '#0e0b15',
   surface: '#171221',
   text: '#f1ebf6',
-  muted: '#a095b3',
   amber: '#ffb347',
   cyan: '#52d6ff',
 };
@@ -15,7 +14,10 @@ const AMBER_ROWS = ['#ffcf85', '#ffb347', '#e89a30', '#c47f26', '#9c641f'];
 const NEUTRAL_ROWS = ['#cdbfe6', '#b3a2d4', '#9884bf', '#7d69a6', '#665390'];
 
 const BRICK_RADIUS = 3;
-const FONT = '14px system-ui, sans-serif';
+const PROMPT_FONT = '500 18px system-ui, sans-serif';
+const PROMPT_LIFT = 70;
+const AIM_MARKER_RADIUS = 7;
+const AIM_MARKER_MIN_GAP = 4;
 
 function roundedRect(context, x, y, width, height, radius) {
   context.beginPath();
@@ -44,8 +46,9 @@ function drawBricks(context, state, palette) {
   }
 }
 
-// The rail shows the human how far the wall can slide.
-function drawWallRail(context, state) {
+// The rail shows the human how far the wall can slide; the ring marks where the wall is heading,
+// because the wall moves at a limited speed and trails the pointer.
+function drawWallRail(context, state, wallAim) {
   const { min, max } = wallBounds();
   const y = WALL.top - 14;
   context.strokeStyle = 'rgba(255, 179, 71, 0.28)';
@@ -57,6 +60,12 @@ function drawWallRail(context, state) {
   context.fillStyle = COLORS.amber;
   roundedRect(context, state.wallX - 14, y - 4, 28, 8, 4);
   context.fill();
+  if (wallAim === null || Math.abs(wallAim - state.wallX) < AIM_MARKER_MIN_GAP) return;
+  context.strokeStyle = COLORS.amber;
+  context.lineWidth = 2;
+  context.beginPath();
+  context.arc(wallAim, y, AIM_MARKER_RADIUS, 0, Math.PI * 2);
+  context.stroke();
 }
 
 function drawPaddle(context, state, tone) {
@@ -81,25 +90,26 @@ function drawBall(context, ball) {
   context.restore();
 }
 
-function drawHint(context, text) {
-  context.fillStyle = COLORS.muted;
-  context.font = FONT;
+// Sits between the wall and the paddle, clear of the help text along the bottom edge.
+function drawServePrompt(context, state) {
+  if (state.status !== 'serving') return;
+  context.fillStyle = COLORS.text;
+  context.font = PROMPT_FONT;
   context.textAlign = 'center';
-  context.fillText(text, FIELD.width / 2, FIELD.height - 14);
+  const prompt = state.modeId === 'human' ? 'Click, tap or press Space to launch' : 'The computer is about to serve';
+  context.fillText(prompt, FIELD.width / 2, PADDLE.y - PROMPT_LIFT);
 }
 
-function hintFor(state) {
-  if (state.status !== 'serving') return null;
-  return state.modeId === 'human' ? 'Click, tap or press Space to launch' : 'Slide the wall: mouse, touch or arrow keys';
-}
-
-export function drawScene(context, state) {
+/**
+ * `wallAim` is where the wall player is steering the wall to, or null when they are not steering.
+ * `showServePrompt` is off while a start or result panel covers the field.
+ */
+export function drawScene(context, state, { wallAim = null, showServePrompt = false } = {}) {
   const isHuman = state.modeId === 'human';
   drawBackdrop(context);
   drawBricks(context, state, isHuman ? NEUTRAL_ROWS : AMBER_ROWS);
-  if (!isHuman) drawWallRail(context, state);
+  if (!isHuman) drawWallRail(context, state, wallAim);
   drawPaddle(context, state, isHuman ? COLORS.amber : COLORS.cyan);
   drawBall(context, state.ball);
-  const hint = hintFor(state);
-  if (hint) drawHint(context, hint);
+  if (showServePrompt) drawServePrompt(context, state);
 }

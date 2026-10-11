@@ -2,7 +2,8 @@ import { ramp } from '../../core/difficulty.js';
 
 export const FIELD = { width: 640, height: 480 };
 
-export const PADDLE = { y: 444, height: 12, speed: 560 };
+// Leaves the strip below the paddle free for the on-screen help text.
+export const PADDLE = { y: 348, height: 12, speed: 560 };
 
 export const BALL = {
   radius: 6,
@@ -17,9 +18,10 @@ export const WALL = {
   columns: 10,
   rows: 5,
   brickWidth: 48,
-  brickHeight: 18,
+  brickHeight: 16,
   gap: 4,
-  top: 64,
+  // Leaves room above the wall for the level and lives readouts.
+  top: 112,
   // Computer mode: the human slides the wall at most this fast, so the ball can always be tracked.
   speed: 150,
   // Share of the wall's sideways speed handed to a ball that hits it; this is the human's steering.
@@ -34,31 +36,31 @@ export const ROW_POINTS = [50, 40, 30, 20, 10];
 export const LIFE_VALUE = 200;
 export const STANDING_BRICK_VALUE = 10;
 
+// Ball-in-play seconds from the easiest setting (level 1) to the hardest (level 10).
+export const SECONDS_TO_HARDEST = 150;
+
 /**
- * Difficulty curves as [from, to], reached linearly over `seconds` of ball-in-play time.
+ * Difficulty curves as [from, to], reached linearly over SECONDS_TO_HARDEST of ball-in-play time.
  * Human mode: the ball speeds up and the paddle shrinks, so keeping it alive gets steadily harder.
  * Computer mode: the human's job gets harder as the computer's reaction time and aim error melt
  * away and the ball quickens, so dodging and steering the wall has to get sharper too.
  */
 export const DIFFICULTY = {
   human: {
-    seconds: 150,
     ballSpeed: [270, 430],
-    paddleWidth: [112, 64],
+    paddleWidth: [132, 84],
   },
   computer: {
-    seconds: 150,
     ballSpeed: [250, 440],
     paddleWidth: [96, 84],
-    reaction: [0.45, 0.25],
-    aimError: [40, 22],
+    reaction: [0.45, 0.18],
+    aimError: [40, 18],
   },
 };
 
 export function difficultyAt(modeId, seconds) {
-  const { seconds: duration, ...curves } = DIFFICULTY[modeId];
   return Object.fromEntries(
-    Object.entries(curves).map(([knob, [from, to]]) => [knob, ramp(from, to, duration, seconds)]),
+    Object.entries(DIFFICULTY[modeId]).map(([knob, [from, to]]) => [knob, ramp(from, to, SECONDS_TO_HARDEST, seconds)]),
   );
 }
 

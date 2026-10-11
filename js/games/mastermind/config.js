@@ -17,14 +17,14 @@ export const FINAL_LEVEL = 10;
  * Board curve by level (1-based), linear then rounded:
  *   pegs     4 -> 5   (the fifth peg appears around level 6)
  *   colours  6 -> 7   (the seventh colour appears around level 6)
- *   guesses  12 -> 8  (about one fewer guess every 2-3 levels)
+ *   guesses  10 -> 8  (about one fewer guess every 4-5 levels)
  * Repeated colours are allowed from REPEATS_FROM_LEVEL, which is the biggest single jump in
  * difficulty, so it arrives only after two levels of warm-up.
  */
 const BOARD_RAMP = {
   pegs: { from: 4, to: 5 },
   colours: { from: 6, to: 7 },
-  guesses: { from: 12, to: 8 },
+  guesses: { from: 10, to: 8 },
 };
 const REPEATS_FROM_LEVEL = 3;
 
@@ -50,11 +50,11 @@ const rampByLevel = (range, level) => ramp(range.from, range.to, FINAL_LEVEL - 1
 
 /**
  * When the person MAKES the code, their job is to stump the computer, so the guess limit works the
- * other way round: a fixed 6 keeps the computer's failure rate against random codes falling from
- * about 50-70% at the early levels to about 20% at level 10 as its skill ramps (measured with the
- * seeded simulations in tests/mastermindSimulation.js). A person choosing codes on purpose does better.
+ * other way round: 7 guesses at the start, 6 at the end, keep the computer's failure rate against
+ * random codes falling from about 70% to about 25% as its skill ramps (measured with the seeded
+ * simulations in tests/mastermindBalance.test.js). A person choosing codes on purpose does better.
  */
-const MAKER_GUESSES = 6;
+const MAKER_GUESSES = { from: 7, to: 6 };
 
 /** `personBreaks` is true when the person cracks the codes, false when they make them. */
 export function levelSettings(level, { personBreaks = true } = {}) {
@@ -62,7 +62,7 @@ export function levelSettings(level, { personBreaks = true } = {}) {
   return {
     pegs: Math.round(rampByLevel(pegs, level)),
     colours: Math.round(rampByLevel(colours, level)),
-    guesses: personBreaks ? Math.round(rampByLevel(guesses, level)) : MAKER_GUESSES,
+    guesses: Math.round(rampByLevel(personBreaks ? guesses : MAKER_GUESSES, level)),
     repeats: level >= REPEATS_FROM_LEVEL,
   };
 }

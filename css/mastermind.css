@@ -150,10 +150,12 @@
 
 /* ---------- Side panel ---------- */
 
+.mm-panel[hidden] { display: none; }
+
 .mm-panel {
   display: grid;
   align-content: start;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-height: 0;
 }
 
@@ -176,6 +178,25 @@
   font-size: 0.75rem;
   color: var(--muted);
 }
+
+.mm-goal {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.mm-legend {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.mm-legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
 
 .mm-message {
   min-height: 3.2em;
@@ -224,7 +245,7 @@
 .mm-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
 .mm-button {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-4);
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: var(--raised);

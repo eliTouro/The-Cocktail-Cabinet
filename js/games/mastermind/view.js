@@ -85,13 +85,17 @@ export function createView(container, handlers) {
   const board = h('ol', { class: 'mm-board', 'aria-label': 'Guesses' });
   const secretTitle = h('p', { class: 'mm-label' });
   const secretSlotsBox = h('div', { class: 'mm-secret__slots' });
+  const goalLine = h('p', { class: 'mm-goal' });
   const ruleLine = h('p', { class: 'mm-rules' });
+  const legend = h('ul', { class: 'mm-legend', 'aria-label': 'What the small pegs mean' },
+    h('li', {}, h('span', { class: 'dot-peg dot-peg--exact' }), 'Red: right colour, right place'),
+    h('li', {}, h('span', { class: 'dot-peg dot-peg--white' }), 'White: right colour, wrong place'));
   const message = h('p', { class: 'mm-message', role: 'status' });
   const thinking = h('p', { class: 'mm-thinking', hidden: true }, 'Computer is thinking', h('span', { class: 'mm-thinking__dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')));
   const palette = h('div', { class: 'mm-palette', role: 'group', 'aria-label': 'Colours' });
   const actions = h('div', { class: 'mm-actions' });
-  const panel = h('div', { class: 'mm-panel' },
-    h('div', { class: 'mm-secret' }, secretTitle, secretSlotsBox), ruleLine, message, thinking, palette, actions);
+  const panel = h('div', { class: 'mm-panel', hidden: true },
+    h('div', { class: 'mm-secret' }, secretTitle, secretSlotsBox), goalLine, ruleLine, legend, message, thinking, palette, actions);
   const root = h('div', { class: 'mm' }, board, panel);
   container.append(root);
 
@@ -101,6 +105,7 @@ export function createView(container, handlers) {
   return {
     /** Lay out an empty board and palette for a new level. */
     buildRound(settings, { secretLabel }) {
+      panel.hidden = false;
       rows = Array.from({ length: settings.guesses }, (_, index) =>
         createBoardRow(settings, index + 1, (place) => handlers.onSlot(place)));
       board.style.setProperty('--rows', settings.guesses);
@@ -134,6 +139,8 @@ export function createView(container, handlers) {
         masked: secret.masked,
       });
     },
+
+    setGoal(text) { goalLine.textContent = text; },
 
     setMessage(text, { warning = false } = {}) {
       message.textContent = text;

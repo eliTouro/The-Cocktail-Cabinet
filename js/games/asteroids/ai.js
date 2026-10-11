@@ -116,7 +116,7 @@ export function createAi(rng, skillAt = AI_SKILL) {
       remember(observation);
       const { ship } = observation;
       if (!ship.alive) return IDLE;
-      const skill = skillAt(observation.time);
+      const skill = skillAt(observation.elapsed);
       const threats = rocksAsSeenNow(observation, skill.reactionDelay)
         .map((rock) => assessThreat(ship, rock))
         .filter((threat) => threat.isDangerous)

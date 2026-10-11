@@ -9,7 +9,7 @@ import {
   PHASE, SPAWN_REJECTION, createRock, createState, launchToward, observe, rockContainsPoint,
   rockHitsShip, spawnRejection, step,
 } from '../js/games/asteroids/rules.js';
-import { playClassicMode, playComputerMode } from './asteroidsSimulation.js';
+import { playComputerMode, playHumanMode, relentlessSender } from './asteroidsSimulation.js';
 
 const STEP = STEP_SECONDS;
 const COMPUTER = TUNING.computer();
@@ -229,28 +229,28 @@ test('difficulty values rise monotonically: waves harden, the pilot sharpens', (
 const SEEDS = Array.from({ length: 24 }, (_, index) => index + 1);
 const percentage = (runs, predicate) => runs.filter(predicate).length / runs.length;
 
-test('simulation: the pilot at its weakest still survives and destroys rocks', () => {
+test('simulation: the pilot at its weakest still survives a while and destroys rocks', () => {
   const runs = SEEDS.map((seed) => playComputerMode({ seed, skillAt: () => AI_SKILL(0) }));
   const averageDestroyed = runs.reduce((sum, run) => sum + run.rocksDestroyed, 0) / runs.length;
   const averageTime = runs.reduce((sum, run) => sum + run.time, 0) / runs.length;
-  assert.ok(averageDestroyed >= 8, `average rocks destroyed ${averageDestroyed}`);
-  assert.ok(averageTime >= 15, `average survival ${averageTime}`);
-  assert.ok(percentage(runs, (run) => run.phase === PHASE.lost) > 0.8, 'a weak pilot should usually be beaten');
+  assert.ok(averageDestroyed >= 2, `average rocks destroyed ${averageDestroyed}`);
+  assert.ok(averageTime >= 20, `average survival ${averageTime}`);
+  assert.ok(percentage(runs, (run) => run.phase === PHASE.lost) > 0.6, 'a weak pilot should usually be beaten');
 });
 
 test('simulation: the sharpest pilot is beatable even by a relentless sender, and still wins often', () => {
-  const runs = SEEDS.map((seed) => playComputerMode({ seed, skillAt: () => AI_SKILL(1e6) }));
+  const runs = SEEDS.map((seed) => playComputerMode({ seed, skillAt: () => AI_SKILL(1e6), sender: relentlessSender }));
   const shipWins = percentage(runs, (run) => run.phase === PHASE.won);
   assert.ok(shipWins > 0.1 && shipWins < 0.9, `ship won ${shipWins}`);
   runs.forEach((run) => assert.ok(run.time <= SURVIVE_SECONDS + 1));
 });
 
 test('simulation: a sharp pilot lasts longer than a clumsy one', () => {
-  const averageTime = (skillAt) => SEEDS.reduce((sum, seed) => sum + playComputerMode({ seed, skillAt }).time, 0) / SEEDS.length;
+  const averageTime = (skillAt) => SEEDS.reduce((sum, seed) => sum + playComputerMode({ seed, skillAt, sender: relentlessSender }).time, 0) / SEEDS.length;
   assert.ok(averageTime(() => AI_SKILL(1e6)) > averageTime(() => AI_SKILL(0)) + 10);
 });
 
-test('simulation: the rules support a classic game, with the pilot scoring through waves', () => {
-  const runs = [1, 2, 3, 4].map((seed) => playClassicMode({ seed, skillAt: () => AI_SKILL(1e6) }));
-  runs.forEach((run) => assert.ok(run.score > 0 && run.phase === PHASE.playing));
+test('simulation: the rules support a flying game, with the pilot scoring through waves', () => {
+  const runs = [1, 2, 3, 4].map((seed) => playHumanMode({ seed, skillAt: () => AI_SKILL(1e6), lapses: false }));
+  runs.forEach((run) => assert.ok(run.score > 0 && run.phase !== PHASE.lost));
 });

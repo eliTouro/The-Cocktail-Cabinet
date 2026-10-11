@@ -1,12 +1,15 @@
 import { createCanvas } from '../core/canvas.js';
 import { createKeyboard, createPointer } from '../core/input.js';
+import { startLevelFromUrl } from '../core/level.js';
 import { createLoop } from '../core/loop.js';
 import { createOverlay } from '../core/overlay.js';
 import { createRng } from '../core/rng.js';
-import { APPLE_RULES, CANVAS, ESCAPE_LENGTH, GRID, START_LENGTH } from './snake/config.js';
+import { BOARD_TOP, CANVAS, ESCAPE_LENGTH, GET_READY_SECONDS, GRID, WIN_APPLES } from './snake/config.js';
+import { createSnakeHud } from './snake/hud.js';
 import { drawFrame } from './snake/render.js';
 import { isDropTarget, isOutside } from './snake/rules.js';
 import { createSession } from './snake/session.js';
+import { playApplePlaced, playEvent, playRefused, playStart } from './snake/sounds.js';
 import { createSwipe } from './snake/swipe.js';
 
 const KEY_DIRECTIONS = {
@@ -16,52 +19,60 @@ const KEY_DIRECTIONS = {
   ArrowRight: 'right', KeyD: 'right',
 };
 
-const NOTICE_SECONDS = 1.2;
-const REJECTION_NOTICES = {
-  blocked: 'That cell is taken',
-  unreachable: 'The snake cannot reach that cell',
-  'too-many': `Only ${APPLE_RULES.maxApples} apples at a time`,
-  cooldown: 'Wait a moment before the next apple',
-};
-
 const INTRO = {
-  human: {
-    detail: 'Steer with the arrow keys or WASD, or swipe. Eat the apples to grow. Hitting a wall or yourself ends the run.',
-  },
-  computer: {
-    detail: `The computer steers the snake. Click or tap a cell to drop an apple, up to ${APPLE_RULES.maxApples} at a time. Bait it into a wall or its own tail before it grows to ${ESCAPE_LENGTH}.`,
-  },
+  human: `Eat ${WIN_APPLES} apples to win. Walls and your own tail are deadly.`,
+  computer: `Drop apples to lure the snake into a wall or its own tail before it grows to ${ESCAPE_LENGTH}.`,
 };
 
-const cellAt = (point) => ({ x: Math.floor(point.x / GRID.cell), y: Math.floor(point.y / GRID.cell) });
+const cellAt = (point) => ({ x: Math.floor(point.x / GRID.cell), y: Math.floor((point.y - BOARD_TOP) / GRID.cell) });
 
 export function mount(container, { mode }) {
   const modeId = mode.id;
   const surface = createCanvas(container, CANVAS);
   surface.canvas.style.touchAction = 'none';
   const overlay = createOverlay(container);
+  const hud = createSnakeHud(container, modeId);
   const keyboard = createKeyboard();
   const pointer = createPointer(surface.canvas, CANVAS);
   const swipe = modeId === 'human' ? createSwipe(surface.canvas, (direction) => session.queueTurn(direction)) : null;
   const loop = createLoop({ update, render });
 
-  let session = createSession({ modeId, rng: createRng() });
+  let session = newSession(startLevelFromUrl());
   let playing = false;
-  let notice = { text: '', secondsLeft: 0 };
+  let readyLeft = 0;
 
-  function begin() {
-    session = createSession({ modeId, rng: createRng() });
+  function newSession(startLevel) {
+    return createSession({ modeId, rng: createRng(), startLevel, onEvent: announce });
+  }
+
+  function announce(event) {
+    playEvent(modeId, event);
+    hud.showEvent(event);
+  }
+
+  function discardInputFromBeforeTheRound() {
+    Object.keys(KEY_DIRECTIONS).forEach((code) => keyboard.consumeTap(code));
+    pointer.consumePress();
+  }
+
+  function begin(startLevel) {
+    session = newSession(startLevel);
+    discardInputFromBeforeTheRound();
     playing = true;
+    readyLeft = GET_READY_SECONDS;
     overlay.hide();
-    updateScore();
+    hud.refresh(session);
+    hud.showHint('Get ready', GET_READY_SECONDS);
+    playStart();
   }
 
   function update(seconds) {
-    notice.secondsLeft -= seconds;
     if (!playing) return;
     readInput();
+    readyLeft -= seconds;
+    if (readyLeft > 0) return;
     session.update(seconds);
-    updateScore();
+    hud.refresh(session);
     if (session.outcome) finish();
   }
 
@@ -78,54 +89,49 @@ export function mount(container, { mode }) {
 
   function tryPlaceApple(cell) {
     const result = session.requestApple(cell);
-    if (!result.ok) notice = { text: REJECTION_NOTICES[result.reason], secondsLeft: NOTICE_SECONDS };
-  }
-
-  function updateScore() {
-    const length = session.state.snake.length;
-    overlay.setScore(modeId === 'human'
-      ? `Apples ${length - START_LENGTH}`
-      : `Snake ${length}/${ESCAPE_LENGTH}   Apples ${session.state.apples.length}/${APPLE_RULES.maxApples}`);
+    if (result.ok) {
+      playApplePlaced();
+      return;
+    }
+    playRefused();
+    hud.showRefusal(result.reason);
   }
 
   function finish() {
     playing = false;
-    overlay.show({ ...endScreen(), actionLabel: 'Play again', onAction: begin });
+    overlay.show({ ...endScreen(), actionLabel: 'Play again', levelPicker: true, onAction: begin });
   }
 
   function endScreen() {
-    const length = session.state.snake.length;
-    const seconds = Math.round(session.elapsed);
-    if (session.outcome === 'cleared') return { title: 'Board cleared', detail: 'The snake fills every cell. Perfect run.' };
-    if (modeId === 'human') return { title: 'Game over', detail: `You ate ${length - START_LENGTH} apples in ${seconds} seconds.` };
-    if (session.outcome === 'dead') {
-      return { title: 'You trapped it', detail: `The snake crashed at length ${length} after ${seconds} seconds.` };
+    const level = `level ${session.level()}`;
+    const hitWall = session.crashedInto === 'wall';
+    if (session.outcome === 'won') return { title: 'You win', detail: `You ate ${WIN_APPLES} apples, reaching ${level}.` };
+    if (session.outcome === 'escaped') return { title: 'The snake escaped', detail: `It reached length ${ESCAPE_LENGTH} at ${level}. Try baiting it into corners.` };
+    if (modeId === 'human') {
+      return { title: 'Game over', detail: `You hit ${hitWall ? 'the wall' : 'your own tail'} with ${session.applesEaten()} of ${WIN_APPLES} apples eaten, at ${level}.` };
     }
-    return { title: 'The snake escaped', detail: `It reached length ${ESCAPE_LENGTH} in ${seconds} seconds. Try baiting it into corners.` };
+    return { title: 'You trapped it', detail: `The snake hit ${hitWall ? 'the wall' : 'its own tail'} at length ${session.state.snake.length}, at ${level}.` };
   }
 
   function hoverCell() {
-    if (modeId !== 'computer') return null;
+    if (modeId !== 'computer' || !playing) return null;
     const cell = cellAt(pointer.position());
     if (isOutside(session.state, cell)) return null;
     return { ...cell, valid: isDropTarget(session.state, cell) };
   }
 
   function render() {
-    drawFrame(surface.context, {
-      session,
-      hover: hoverCell(),
-      notice: notice.secondsLeft > 0 ? notice.text : '',
-    });
+    drawFrame(surface.context, { session, hover: hoverCell() });
   }
 
   overlay.show({
     title: 'Snake',
-    detail: INTRO[modeId].detail,
+    detail: INTRO[modeId],
     actionLabel: 'Start',
+    levelPicker: true,
     onAction: begin,
   });
-  updateScore();
+  hud.refresh(session);
   loop.start();
 
   return {
@@ -135,6 +141,7 @@ export function mount(container, { mode }) {
       pointer.destroy();
       swipe?.destroy();
       overlay.destroy();
+      hud.destroy();
       surface.destroy();
     },
   };

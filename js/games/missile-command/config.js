@@ -30,15 +30,19 @@ export const NUMPAD_BASE_KEYS = ['Numpad1', 'Numpad2', 'Numpad3'];
 
 export const SURVIVE_SECONDS = 80;
 
-const WAVE_RAMP_SECONDS = 480;
-const SKILL_RAMP_SECONDS = 60;
+/**
+ * Seconds of round clock for the difficulty to climb from level 1 to level 10. A round started at
+ * level N begins with the clock at `elapsedAtLevel(N, SECONDS_TO_HARDEST)`; it then keeps running,
+ * so an 80 s round that starts at level 1 still ends around level 7.
+ */
+export const SECONDS_TO_HARDEST = 120;
 
 const HUMAN_TUNING = {
   waves: true,
   ammoPerBase: 10,
   ammoRefillPerSecond: 0,
   baseCooldown: 0.4,
-  launchCooldown: 0.1,
+  fireCooldown: 0.1,
   budgeted: false,
   budgetCap: 0,
   budgetRefill: 0,
@@ -52,6 +56,7 @@ const COMPUTER_TUNING = {
   ammoPerBase: 10,
   ammoRefillPerSecond: 0.2,
   baseCooldown: 0.4,
+  fireCooldown: 0.1,
   launchCooldown: 0.1,
   budgeted: true,
   budgetCap: 7,
@@ -72,16 +77,16 @@ export const WAVE_PAUSE = 2.5;
 export const FIRST_WAVE_DELAY = 1;
 
 /**
- * Human mode wave curve over eight minutes: 5 -> 16 warheads per wave falling at 26 -> 62 px/s,
- * launched over a window that stretches with the count. Early waves are slow enough to learn
- * the lead on a falling warhead; late ones need chain reactions and ammo discipline.
- * Splitting warheads (which break into extra warheads mid-fall) only begin after the first minutes
- * and top out at a one-in-three chance per warhead.
+ * Defend mode wave curve over the difficulty clock (SECONDS_TO_HARDEST): 9 -> 12 warheads per wave
+ * falling at 44 -> 56 px/s, launched over a window that stretches with the count. Early waves are
+ * slow enough to learn the lead on a falling warhead; late ones need chain reactions and ammo
+ * discipline. Splitting warheads (which break into extra warheads mid-fall) only begin a third of
+ * the way up the ramp and top out at a 45% chance per warhead.
  */
 export const WAVE = (seconds) => ({
-  count: Math.round(ramp(5, 16, WAVE_RAMP_SECONDS, seconds)),
-  speed: ramp(26, 62, WAVE_RAMP_SECONDS, seconds),
-  splitChance: Math.max(0, ramp(-0.25, 0.33, WAVE_RAMP_SECONDS, seconds)),
+  count: Math.round(ramp(9, 12, SECONDS_TO_HARDEST, seconds)),
+  speed: ramp(44, 56, SECONDS_TO_HARDEST, seconds),
+  splitChance: Math.max(0, ramp(-0.2, 0.45, SECONDS_TO_HARDEST, seconds)),
 });
 
 export const WAVE_LAYOUT = {
@@ -92,15 +97,16 @@ export const WAVE_LAYOUT = {
 };
 
 /**
- * Computer defender skill, ramped over 60 s of game time so the human attacks a sloppy defender first
- * and a sharp one late: it notices warheads 0.9 s late, misses its aim point by up to 30 px, wrongly
- * judges 25% of warheads and shuffles its priorities by 2.5 s, ending at 0.35 s, 10 px, 6% and 0.8 s.
+ * Computer defender skill, ramped over the difficulty clock so the human attacks a sloppy defender
+ * first and a sharper one later: at level 1 it notices warheads 0.6 s late, misses its aim point by
+ * up to 20 px, wrongly judges 18% of warheads and shuffles its priorities by 2.5 s; it ends at
+ * 0.5 s, 13 px, 8% and 1 s.
  */
 export const AI_SKILL = (seconds) => ({
-  reactionDelay: ramp(0.9, 0.55, SKILL_RAMP_SECONDS, seconds),
-  aimError: ramp(30, 18, SKILL_RAMP_SECONDS, seconds),
-  mistakeRate: ramp(0.25, 0.12, SKILL_RAMP_SECONDS, seconds),
-  priorityNoise: ramp(2.5, 1.2, SKILL_RAMP_SECONDS, seconds),
+  reactionDelay: ramp(0.6, 0.5, SECONDS_TO_HARDEST, seconds),
+  aimError: ramp(20, 13, SECONDS_TO_HARDEST, seconds),
+  mistakeRate: ramp(0.18, 0.08, SECONDS_TO_HARDEST, seconds),
+  priorityNoise: ramp(2.5, 1, SECONDS_TO_HARDEST, seconds),
 });
 
 export const AI_TUNING = {

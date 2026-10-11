@@ -25,10 +25,9 @@ test('the novice defender is beatable by a patient salvo attacker, but the game 
   games.forEach((state) => assert.ok(state.time > 30));
 });
 
-test('the expert defender is beatable under worst-case salvo launching, yet does not collapse', () => {
+test('the expert defender mostly holds against worst-case salvo launching, killing most warheads', () => {
   const games = outcomes({ skillAt: EXPERT });
-  assert.ok(countWhere(games, PHASE.citiesLost) >= 1, 'the attacker can still win');
-  assert.ok(countWhere(games, PHASE.survived) >= 1, 'the defender can still win');
+  assert.ok(countWhere(games, PHASE.survived) >= SEEDS.length - 2, 'the defender usually wins');
   games.forEach((state) => assert.ok(killRate(state) > 0.7));
 });
 

@@ -87,8 +87,8 @@ export function createAi(rng, skillAt = AI_SKILL) {
 
   return {
     decide(observation) {
-      if (observation.launchCooldown > 0) return NO_LAUNCHES;
-      const skill = skillAt(observation.time);
+      if (observation.fireCooldown > 0) return NO_LAUNCHES;
+      const skill = skillAt(observation.elapsed);
       const candidates = observation.warheads
         .map((warhead) => ({ warhead, judgement: judge(warhead, observation, skill) }))
         .filter(({ judgement }) => observation.time - judgement.seenAt >= skill.reactionDelay)

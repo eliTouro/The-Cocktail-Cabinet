@@ -1,4 +1,4 @@
-import { HEIGHT, ROCK_TIERS, SAFE_RADIUS, SENDER_PANEL, SHIP, WIDTH } from './config.js';
+import { HEIGHT, ROCK_TIERS, SAFE_RADIUS, SHIP, WIDTH } from './config.js';
 import { sizeButtonBox } from './controllers.js';
 import { polygonPoints } from './geometry.js';
 
@@ -118,8 +118,12 @@ function drawSafeZone(context, ship, color) {
   context.restore();
 }
 
+const LABEL_LIFT = 16;
+const LABEL_HALF_WIDTH = 60;
+const clampLabelX = (x) => Math.min(Math.max(x, LABEL_HALF_WIDTH), WIDTH - LABEL_HALF_WIDTH);
+
 function drawLaunchPreview(context, preview, color) {
-  const { from, target, tier, canSend } = preview;
+  const { from, target, tier, canSend, refusalLabel } = preview;
   const { sides, radius } = ROCK_TIERS[tier];
   context.save();
   context.globalAlpha = canSend ? 0.9 : 0.35;
@@ -131,56 +135,66 @@ function drawLaunchPreview(context, preview, color) {
   context.setLineDash([]);
   strokeGlowing(context, color, () => tracePolygon(context, polygonPoints(from.x, from.y, radius, sides, 0)));
   context.restore();
+  if (refusalLabel) drawText(context, refusalLabel, clampLabelX(target.x), Math.max(target.y - LABEL_LIFT, LABEL_LIFT), { color: TEXT, align: 'center' });
 }
 
-function drawSizeButtons(context, selectedTier, color) {
+const BUTTON_ICON_RADIUS = 11;
+const BUTTON_PADDING = 10;
+
+function drawSizeButtons(context, { tier: selectedTier, budget }, color) {
   ROCK_TIERS.forEach((tierInfo, tier) => {
     const box = sizeButtonBox(tier);
     const isSelected = tier === selectedTier;
+    const isAffordable = budget >= tierInfo.sendCost;
+    const middle = box.y + box.height / 2;
     context.save();
+    context.globalAlpha = isAffordable ? 1 : 0.45;
     context.fillStyle = isSelected ? 'rgba(255, 179, 71, 0.16)' : 'rgba(23, 18, 33, 0.9)';
     context.strokeStyle = isSelected ? color : 'rgba(255, 255, 255, 0.14)';
     context.lineWidth = 1;
     context.fillRect(box.x, box.y, box.width, box.height);
     context.strokeRect(box.x + 0.5, box.y + 0.5, box.width - 1, box.height - 1);
+    const iconX = box.x + BUTTON_PADDING + BUTTON_ICON_RADIUS;
+    strokeGlowing(context, isSelected ? color : MUTED, () => tracePolygon(context, polygonPoints(iconX, middle, BUTTON_ICON_RADIUS, tierInfo.sides, -Math.PI / 2)));
+    const textX = iconX + BUTTON_ICON_RADIUS + BUTTON_PADDING;
+    drawText(context, `${tier + 1} ${tierInfo.name}`, textX, middle - 8, { color: isSelected ? TEXT : MUTED, size: 12 });
+    drawText(context, `costs ${tierInfo.sendCost}`, textX, middle + 9, { color: isAffordable ? MUTED : TONE_COLORS.human, size: 11 });
     context.restore();
-    drawText(context, `${tier + 1}  ${tierInfo.name}  ${tierInfo.sendCost}`, box.x + box.width / 2, box.y + box.height / 2, {
-      color: isSelected ? TEXT : MUTED, align: 'center', size: 11,
-    });
   });
-}
-
-function drawBudgetMeter(context, preview, color) {
-  const left = SENDER_PANEL.left + ROCK_TIERS.length * (SENDER_PANEL.buttonWidth + SENDER_PANEL.buttonGap) + 8;
-  const width = WIDTH - left - SENDER_PANEL.left;
-  const top = SENDER_PANEL.top + 6;
-  const height = HEIGHT - SENDER_PANEL.top - 18;
-  context.save();
-  context.fillStyle = 'rgba(255, 255, 255, 0.08)';
-  context.fillRect(left, top, width, height);
-  context.fillStyle = color;
-  context.globalAlpha = preview.cooldownRatio > 0 ? 0.55 : 1;
-  context.fillRect(left, top, width * (preview.budget / preview.budgetCap), height);
-  context.restore();
-  drawText(context, 'rock budget', left, top - 6 + height + 12, { size: 10 });
 }
 
 function drawSenderPanel(context, preview, color) {
   drawSafeZone(context, preview.ship, TONE_COLORS.computer);
   drawLaunchPreview(context, preview, color);
-  drawSizeButtons(context, preview.tier, color);
-  drawBudgetMeter(context, preview, color);
+  drawSizeButtons(context, preview, color);
+}
+
+function drawTouchPad(context, buttons, color) {
+  buttons.forEach((button) => {
+    context.save();
+    context.globalAlpha = button.isPressed ? 0.9 : 0.4;
+    context.fillStyle = button.isPressed ? color : 'rgba(255, 255, 255, 0.08)';
+    context.strokeStyle = color;
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.arc(button.x, button.y, button.radius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.restore();
+    drawText(context, button.glyph, button.x, button.y, { color: button.isPressed ? INK : TEXT, align: 'center', size: 20 });
+  });
 }
 
 /**
  * Draws one frame. `shipColor` and `rockColor` follow the cabinet's rule: amber is what the human
  * controls, cyan is what the computer controls. `preview` is only set in computer mode.
  */
-export function render(context, { state, shipColor, rockColor, preview }) {
+export function render(context, { state, shipColor, rockColor, preview, padButtons }) {
   context.fillStyle = INK;
   context.fillRect(0, 0, WIDTH, HEIGHT);
   state.rocks.forEach((rock) => drawRock(context, rock, rockColor));
   drawBullets(context, state.bullets, shipColor);
   drawShip(context, state, shipColor);
   if (preview) drawSenderPanel(context, { ...preview, ship: state.ship }, rockColor);
+  if (padButtons) drawTouchPad(context, padButtons, shipColor);
 }

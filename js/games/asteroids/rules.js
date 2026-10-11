@@ -7,6 +7,14 @@ import {
 } from './geometry.js';
 
 export const PHASE = { playing: 'playing', lost: 'lost', won: 'won' };
+export const EVENT = {
+  shot: 'shot',
+  rockDestroyed: 'rock-destroyed',
+  rockLaunched: 'rock-launched',
+  launchRefused: 'launch-refused',
+  shipHit: 'ship-hit',
+  shipRespawned: 'ship-respawned',
+};
 export const SPAWN_REJECTION = {
   tooMany: 'too-many-rocks',
   cooldown: 'send-cooldown',
@@ -27,10 +35,16 @@ function createShip() {
   };
 }
 
-/** `surviveSeconds` is the time the ship must outlast to win; null means the game only ends by losing. */
-export function createState({ surviveSeconds = null } = {}) {
+/**
+ * `surviveSeconds` is the time the ship must outlast to win; null means the game only ends by losing.
+ * `startElapsed` is where the difficulty clock stands at the start of the round (see `difficultyClock`).
+ * `budget` is how many rock-send points the sender starts with.
+ */
+export function createState({ surviveSeconds = null, startElapsed = 0, budget = 0 } = {}) {
   return {
     time: 0,
+    startElapsed,
+    events: [],
     phase: PHASE.playing,
     surviveSeconds,
     ship: createShip(),
@@ -41,10 +55,13 @@ export function createState({ surviveSeconds = null } = {}) {
     lives: SHIP.startingLives,
     rocksDestroyed: 0,
     rocksSent: 0,
-    budget: 0,
+    budget,
     sendCooldown: 0,
   };
 }
+
+/** Seconds on the difficulty ramp: the round's own time plus the head start the chosen level gives. */
+export const difficultyClock = (state) => state.startElapsed + state.time;
 
 /** What a pilot may see: the ship, rocks and bullets, but none of the rules' bookkeeping. */
 export function observe(state) {
@@ -52,6 +69,7 @@ export function observe(state) {
   const { ship } = state;
   return {
     time: state.time,
+    elapsed: difficultyClock(state),
     ship: { ...copy(ship), angle: ship.angle, cooldown: ship.cooldown, alive: ship.alive, invulnerable: ship.invulnerable },
     rocks: state.rocks.map((rock) => ({ ...copy(rock), tier: rock.tier, radius: ROCK_TIERS[rock.tier].radius })),
     bullets: state.bullets.map(copy),
@@ -87,9 +105,14 @@ export function spawnRejection(state, spawn, tuning) {
 }
 
 function applySpawn(state, spawn, tuning) {
-  if (spawnRejection(state, spawn, tuning)) return;
+  const reason = spawnRejection(state, spawn, tuning);
+  if (reason) {
+    if (!spawn.free) state.events.push({ type: EVENT.launchRefused, reason });
+    return;
+  }
   state.rocks.push(createRock(state, spawn));
   if (spawn.free) return;
+  state.events.push({ type: EVENT.rockLaunched, tier: spawn.tier });
   state.rocksSent += 1;
   state.budget -= ROCK_TIERS[spawn.tier].sendCost;
   state.sendCooldown = tuning.sendCooldown;
@@ -127,7 +150,7 @@ function flyShip(ship, input, dt) {
 function fireBullet(state, input) {
   const { ship } = state;
   if (!input.fire || ship.cooldown > 0) return;
-    const dx = Math.cos(ship.angle);
+  const dx = Math.cos(ship.angle);
   const dy = Math.sin(ship.angle);
   state.bullets.push({
     x: wrapCoordinate(ship.x + dx * SHIP.noseOffset, WIDTH),
@@ -137,6 +160,7 @@ function fireBullet(state, input) {
     age: 0,
   });
   ship.cooldown = BULLET.cooldown;
+  state.events.push({ type: EVENT.shot });
 }
 
 function rockPolygonNear(rock, point) {
@@ -193,6 +217,7 @@ function bulletHitsRock(bullet, rock, dt) {
 function destroyRock(state, rock) {
   state.score += ROCK_TIERS[rock.tier].points;
   state.rocksDestroyed += 1;
+  state.events.push({ type: EVENT.rockDestroyed, tier: rock.tier });
   state.rocks = state.rocks.filter((other) => other !== rock).concat(splitRock(state, rock));
 }
 
@@ -213,6 +238,7 @@ function resolveShipHit(state) {
   ship.respawnIn = SHIP.respawnDelay;
   state.lives -= 1;
   if (state.lives <= 0) state.phase = PHASE.lost;
+  state.events.push({ type: EVENT.shipHit });
 }
 
 function isCentreClear(state) {
@@ -221,20 +247,25 @@ function isCentreClear(state) {
 
 function tryRespawn(state, dt) {
   state.ship.respawnIn = Math.max(0, state.ship.respawnIn - dt);
-  if (state.ship.respawnIn === 0 && isCentreClear(state)) state.ship = createShip();
+  if (state.ship.respawnIn > 0 || !isCentreClear(state)) return;
+  state.ship = createShip();
+  state.events.push({ type: EVENT.shipRespawned });
 }
 
 function checkWin(state) {
   const goal = state.surviveSeconds;
-  if (goal !== null && state.time >= goal) state.phase = PHASE.won;
+  if (state.phase === PHASE.playing && goal !== null && state.time >= goal) state.phase = PHASE.won;
 }
 
 /**
  * Advances the game by `dt` seconds. `input` is what any pilot or sender produces:
  *   { rotate: -1|0|1, thrust: boolean, fire: boolean, spawns: [{ tier, x, y, vx, vy, free }] }
  * `tuning` holds the mode's rock limits and send-budget numbers (see config TUNING).
+ * `state.events` is replaced each step with what happened in it, so the screen can play sounds
+ * on the moment something occurs instead of watching state every frame.
  */
 export function step(state, input, dt, tuning) {
+  state.events = [];
   if (state.phase !== PHASE.playing) return;
   state.time += dt;
   refillBudget(state, tuning, dt);

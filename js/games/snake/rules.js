@@ -47,9 +47,10 @@ export function step(state, action) {
   // The tail cell is vacated this tick unless the snake is growing, so it is safe to enter.
   const blockers = ate ? state.snake : state.snake.slice(0, -1);
 
-  if (isOutside(state, head) || blockers.some((cell) => sameCell(cell, head))) {
+  const hitWall = isOutside(state, head);
+  if (hitWall || blockers.some((cell) => sameCell(cell, head))) {
     state.alive = false;
-    return { ate: false, died: true };
+    return { ate: false, died: true, crashedInto: hitWall ? 'wall' : 'tail' };
   }
 
   state.direction = direction;
@@ -66,54 +67,66 @@ export function simulate(state, action) {
   return { state: next, ...result };
 }
 
-function* neighbours(state, cell) {
-  for (const vector of Object.values(DIRECTIONS)) {
-    const next = { x: cell.x + vector.x, y: cell.y + vector.y };
-    if (!isOutside(state, next)) yield next;
-  }
-}
+const ACTION_NAMES = Object.keys(DIRECTIONS);
+const STEP_X = ACTION_NAMES.map((name) => DIRECTIONS[name].x);
+const STEP_Y = ACTION_NAMES.map((name) => DIRECTIONS[name].y);
 
-/** Cells that block movement: the whole snake except the tail, which moves away. */
-function blockedKeys(state) {
-  return new Set(state.snake.slice(0, -1).map(keyOf));
+/**
+ * Breadth-first walk from the head over free cells. `onReach(x, y, firstAction)` is called once per
+ * cell reached, with the first move of the shortest way there; returning true stops the walk.
+ * Plain typed arrays rather than cell objects: the computer's look-ahead runs this several times a move.
+ */
+function walkReachable(state, onReach) {
+  const { cols, rows, snake } = state;
+  const seen = new Uint8Array(cols * rows);
+  for (let index = 0; index < snake.length - 1; index += 1) seen[snake[index].y * cols + snake[index].x] = 1;
+  const headIndex = snake[0].y * cols + snake[0].x;
+  seen[headIndex] = 1;
+  const queue = new Int32Array(cols * rows);
+  const firstMoves = new Int8Array(cols * rows).fill(-1);
+  queue[0] = headIndex;
+  let queued = 1;
+  for (let read = 0; read < queued; read += 1) {
+    const x = queue[read] % cols;
+    const y = (queue[read] - x) / cols;
+    for (let move = 0; move < ACTION_NAMES.length; move += 1) {
+      const nextX = x + STEP_X[move];
+      const nextY = y + STEP_Y[move];
+      if (nextX < 0 || nextY < 0 || nextX >= cols || nextY >= rows || seen[nextY * cols + nextX]) continue;
+      seen[nextY * cols + nextX] = 1;
+      const first = firstMoves[read] < 0 ? move : firstMoves[read];
+      if (onReach(nextX, nextY, ACTION_NAMES[first])) return;
+      queue[queued] = nextY * cols + nextX;
+      firstMoves[queued] = first;
+      queued += 1;
+    }
+  }
 }
 
 /** Free cells the head could walk to, as a Map of cell key to cell. */
 export function reachableCells(state) {
-  const blocked = blockedKeys(state);
   const reached = new Map();
-  const queue = [state.snake[0]];
-  for (let read = 0; read < queue.length; read += 1) {
-    for (const next of neighbours(state, queue[read])) {
-      const key = keyOf(next);
-      if (blocked.has(key) || reached.has(key)) continue;
-      reached.set(key, next);
-      queue.push(next);
-    }
-  }
+  walkReachable(state, (x, y) => { reached.set(keyOf({ x, y }), { x, y }); });
   return reached;
+}
+
+/** How many free cells the head could walk to; cheaper than `reachableCells` when only the room matters. */
+export function reachableCount(state) {
+  let count = 0;
+  walkReachable(state, () => { count += 1; });
+  return count;
 }
 
 /** First action of a shortest walk from the head to any apple, or null if none is reachable. */
 export function firstStepToApple(state) {
-  const blocked = blockedKeys(state);
   const appleKeys = new Set(state.apples.map(keyOf));
-  const head = state.snake[0];
-  const seen = new Set([keyOf(head)]);
-  const queue = legalActions(state).map((action) => ({
-    action,
-    cell: { x: head.x + DIRECTIONS[action].x, y: head.y + DIRECTIONS[action].y },
-  }));
-
-  for (let read = 0; read < queue.length; read += 1) {
-    const { action, cell } = queue[read];
-    const key = keyOf(cell);
-    if (isOutside(state, cell) || blocked.has(key) || seen.has(key)) continue;
-    if (appleKeys.has(key)) return action;
-    seen.add(key);
-    for (const next of neighbours(state, cell)) queue.push({ action, cell: next });
-  }
-  return null;
+  let found = null;
+  walkReachable(state, (x, y, first) => {
+    if (!appleKeys.has(keyOf({ x, y }))) return false;
+    found = first;
+    return true;
+  });
+  return found;
 }
 
 const isOccupied = (state, cell) =>
@@ -135,9 +148,8 @@ export function placeApple(state, cell, maxApples) {
 export const isDropTarget = (state, cell) =>
   !isOutside(state, cell) && !isOccupied(state, cell) && reachableCells(state).has(keyOf(cell));
 
-export function hasFreeCell(state) {
-  return state.snake.length + state.apples.length < state.cols * state.rows;
-}
+/** True when the snake has less open room than its own length, so it can no longer fit without a gap. */
+export const isBoxedIn = (state) => reachableCount(state) < state.snake.length;
 
 /** Drops an apple on a random reachable free cell; does nothing if there is none. */
 export function spawnRandomApple(state, rng) {

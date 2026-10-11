@@ -27,28 +27,17 @@ const EVENT_HINTS = {
 /** Snake's on-screen help: the goal, the controls and a meter for everything the player waits on or spends. */
 export function createSnakeHud(container, modeId) {
   const hud = createHud(container, HELP[modeId]);
-  const primedBars = new Set();
   let shownLevel = 0;
 
-  // The shared HUD only builds a bar's fill when a meter switches over from segments, so a bar
-  // meter is first set as a one-segment meter.
-  function setBar(id, meter) {
-    if (!primedBars.has(id)) {
-      hud.setMeter(id, { ...meter, value: 0, max: 1 });
-      primedBars.add(id);
-    }
-    hud.setMeter(id, meter);
-  }
-
   function showHumanMeters(session) {
-    setBar('apples', { label: 'Apples', value: session.applesEaten(), max: WIN_APPLES });
+    hud.setMeter('apples', { label: 'Apples', value: session.applesEaten(), max: WIN_APPLES });
   }
 
   function showComputerMeters(session) {
     const readySeconds = APPLE_RULES.cooldownSeconds - session.cooldownLeft;
-    setBar('snake', { label: 'Snake', value: session.state.snake.length, max: ESCAPE_LENGTH });
+    hud.setMeter('snake', { label: 'Snake', value: session.state.snake.length, max: ESCAPE_LENGTH });
     hud.setMeter('apples', { label: 'Apples left', value: session.applesLeftToPlace(), max: APPLE_RULES.maxApples });
-    setBar('drop', {
+    hud.setMeter('drop', {
       label: 'Drop',
       value: readySeconds,
       max: APPLE_RULES.cooldownSeconds,

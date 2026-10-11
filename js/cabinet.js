@@ -1,6 +1,7 @@
 import { GAMES, findGame, findMode } from './games.js';
 import { h } from './dom.js';
 import { createIcon } from './icons.js';
+import { createMuteToggle } from './muteToggle.js';
 import { hrefFor, onRouteChange } from './router.js';
 
 const SITE_NAME = 'The Cocktail Cabinet';
@@ -9,6 +10,7 @@ let activeSession = null;
 let renderCount = 0;
 
 export function startCabinet(root) {
+  document.body.append(createMuteToggle());
   let isFirstRender = true;
   onRouteChange((route) => {
     render(root, route);

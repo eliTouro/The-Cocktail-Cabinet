@@ -95,8 +95,16 @@ function createLink(connection, channel) {
     if (message) listeners.message(message);
   };
   const onClose = () => listeners.close();
+  /**
+   * A friend whose network drops (or whose tab is killed) may never close the channel cleanly;
+   * the connection then turns 'failed' once ICE gives up. 'disconnected' can still recover, so wait.
+   */
+  const onState = () => {
+    if (connection.connectionState === 'failed' || connection.connectionState === 'closed') onClose();
+  };
   channel.addEventListener('message', onMessage);
   channel.addEventListener('close', onClose);
+  connection.addEventListener('connectionstatechange', onState);
 
   return {
     send(message) {
@@ -107,6 +115,7 @@ function createLink(connection, channel) {
     close() {
       channel.removeEventListener('message', onMessage);
       channel.removeEventListener('close', onClose);
+      connection.removeEventListener('connectionstatechange', onState);
       channel.close();
       connection.close();
     },

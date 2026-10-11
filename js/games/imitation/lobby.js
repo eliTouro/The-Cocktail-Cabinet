@@ -3,6 +3,8 @@ import { ROLE } from './config.js';
 import { oppositeRole } from './match.js';
 import { acceptInvite, createInvite } from './peer.js';
 import { SignalCodeError, inviteLink } from './signal.js';
+import { cue } from './sounds.js';
+import { actionButton } from './view.js';
 
 const INTRO = {
   [ROLE.judge]: [
@@ -17,6 +19,17 @@ const INTRO = {
   ],
 };
 
+/** The connection is a real sequence, so the steps are numbered the same on both screens. */
+const HOW_TO_CONNECT = [
+  'One of you presses "Invite a friend" and sends the link (text, email, any chat app).',
+  'The other opens the link, or pastes it below, and sends back the reply code it shows.',
+  'The inviter pastes that reply code and presses Connect. The game starts on both screens.',
+];
+
+const STEPS = HOW_TO_CONNECT.length;
+const CONNECT_TROUBLE = 'Could not reach your friend. Some school and office networks block direct connections: try a phone hotspot or both be on the same Wi-Fi, then press Start over.';
+const STALLED_TIP = 'Nothing happening? Check your friend pasted this exact code. If it still will not connect, you both press Start over.';
+
 /**
  * Invite a friend or join one: two copy-paste codes, then a direct WebRTC channel. Calls
  * onConnected(link, isInviter) once the channel is open. `getRole()` is the viewer's role now.
@@ -26,27 +39,41 @@ export function createLobby(view, { getRole, onConnected }) {
   let pendingReply = null;
   let isClosed = false;
 
+  const text = (content) => h('p', { class: 'imx-card__text' }, content);
+  const stepLabel = (step) => h('p', { class: 'imx-card__eyebrow' }, `Step ${step} of ${STEPS}`);
+  const startOverButton = () => h('div', { class: 'imx-card__actions' },
+    actionButton({ label: 'Start over', variant: 'ghost', onClick: startOver }));
+
   function show(errorText = '') {
     const role = getRole();
     const codeBox = h('textarea', { class: 'imx-code', rows: 3, placeholder: 'Paste an invite link or code', 'aria-label': 'Invite code' });
     const join = h('button', { class: 'imx-button imx-button--ghost', type: 'button' }, 'Join with this code');
     join.addEventListener('click', () => joinWith(codeBox.value));
+    if (errorText) cue('error');
+    // The error and the main button sit near the top: on a phone the rest of the card scrolls.
     view.showCard({
       eyebrow: `Imitation · Be the ${role}`,
       title: 'Human or machine?',
       body: [
-        ...INTRO[role].map((text) => h('p', { class: 'imx-card__text' }, text)),
+        errorText && h('p', { class: 'imx-error', role: 'alert' }, errorText),
+        ...INTRO[role].map(text),
+        h('div', { class: 'imx-card__actions' }, actionButton({ label: 'Invite a friend', onClick: startInvite })),
+        h('p', { class: 'imx-card__text' }, 'You need a friend on another device or browser window. How to connect:'),
+        h('ol', { class: 'imx-steps' }, HOW_TO_CONNECT.map((step) => h('li', {}, step))),
         h('div', { class: 'imx-join' },
-          h('label', { class: 'imx-label' }, 'Got an invite from a friend?', codeBox),
-          join,
-          h('p', { class: 'imx-error', role: 'alert' }, errorText)),
+          h('label', { class: 'imx-label' }, 'Got an invite from a friend? Paste it here:', codeBox),
+          join),
       ],
-      actions: [{ label: 'Invite a friend', onClick: startInvite }],
     });
   }
 
+  function startOver() {
+    reset();
+    show();
+  }
+
   async function startInvite() {
-    view.showCard({ title: 'Making your invite…', body: [h('p', { class: 'imx-card__text' }, 'Finding your network address. This takes a few seconds.')] });
+    view.showCard({ title: 'Making your invite…', body: [text('Finding your network address. This takes a few seconds.')] });
     try {
       invite = await createInvite();
     } catch {
@@ -54,6 +81,7 @@ export function createLobby(view, { getRole, onConnected }) {
       return;
     }
     if (isClosed) return;
+    cue('inviteReady');
     showInvite(inviteLink(window.location.href, oppositeRole(getRole()), invite.code));
   }
 
@@ -63,19 +91,23 @@ export function createLobby(view, { getRole, onConnected }) {
     const connect = h('button', { class: 'imx-button imx-button--solid', type: 'button' }, 'Connect');
     connect.addEventListener('click', () => connectWithReply(replyBox.value, error, connect));
     view.showCard({
-      eyebrow: 'Step 1 of 2',
+      eyebrow: `You invite · your friend plays the ${oppositeRole(getRole())}`,
       title: 'Send your friend this link',
       body: [
-        h('p', { class: 'imx-card__text' }, `They join as the ${oppositeRole(getRole())}.`),
+        stepLabel(1),
+        text('Copy the link and send it to your friend however you like. Keep this screen open.'),
         h('input', { class: 'imx-code imx-code--line', readonly: true, value: url, 'aria-label': 'Invite link' }),
         h('div', { class: 'imx-card__actions' },
           view.copyButton('Copy link', () => url),
           shareButton(url),
           view.copyButton(`Copy code only (${invite.code.length} characters)`, () => invite.code)),
-        h('p', { class: 'imx-card__eyebrow' }, 'Step 2 of 2'),
-        h('label', { class: 'imx-label' }, 'They get a reply code. Paste it here:', replyBox),
+        stepLabel(2),
+        text('Your friend opens the link. Their screen shows a reply code for them to send back to you.'),
+        stepLabel(3),
+        h('label', { class: 'imx-label' }, 'Paste their reply code here, then press Connect:', replyBox),
         h('div', { class: 'imx-card__actions' }, connect),
         error,
+        startOverButton(),
       ],
     });
   }
@@ -87,22 +119,29 @@ export function createLobby(view, { getRole, onConnected }) {
     return button;
   }
 
+  /**
+   * A mistyped code can be fixed and retried. Any other failure means this invite's connection is
+   * spent (WebRTC cannot take a second reply), so the only way on is Start over.
+   */
   async function connectWithReply(input, error, button) {
     error.textContent = '';
     button.disabled = true;
     button.textContent = 'Connecting…';
+    const attempt = invite;
     try {
-      onConnected(await invite.acceptReply(input), true);
+      onConnected(await attempt.acceptReply(input), true);
     } catch (problem) {
-      if (isClosed) return;
-      button.disabled = false;
+      if (isClosed || invite !== attempt) return;
+      cue('error');
+      const canRetry = problem instanceof SignalCodeError;
+      button.disabled = !canRetry;
       button.textContent = 'Connect';
-      error.textContent = problem.message || 'That reply code did not work. Start a new invite.';
+      error.textContent = canRetry ? problem.message : CONNECT_TROUBLE;
     }
   }
 
   async function joinWith(input) {
-    view.showCard({ title: 'Opening the invite…', body: [h('p', { class: 'imx-card__text' }, 'Writing your reply code. This takes a few seconds.')] });
+    view.showCard({ title: 'Opening the invite…', body: [text('Writing your reply code. This takes a few seconds.')] });
     try {
       pendingReply = await acceptInvite(input);
     } catch (problem) {
@@ -110,21 +149,26 @@ export function createLobby(view, { getRole, onConnected }) {
       return;
     }
     if (isClosed) return;
+    cue('inviteReady');
     showReplyCode(pendingReply.code);
-    pendingReply.connected
+    const attempt = pendingReply;
+    attempt.connected
       .then((opened) => onConnected(opened, false))
-      .catch((problem) => !isClosed && show(problem.message));
+      .catch(() => !isClosed && pendingReply === attempt && show(CONNECT_TROUBLE));
   }
 
   function showReplyCode(code) {
     view.showCard({
-      eyebrow: 'Almost there',
+      eyebrow: 'You joined your friend\'s invite',
       title: 'Send this reply code back',
       body: [
-        h('p', { class: 'imx-card__text' }, 'Your friend pastes it into their screen and the game starts by itself.'),
+        stepLabel(2),
+        text('Copy this reply code and send it to the friend who invited you. They paste it on their screen and press Connect; the game then starts here by itself.'),
         h('textarea', { class: 'imx-code', rows: 3, readonly: true, 'aria-label': 'Reply code' }, code),
         h('div', { class: 'imx-card__actions' }, view.copyButton(`Copy reply code (${code.length} characters)`, () => code)),
-        h('p', { class: 'imx-search__status' }, 'Waiting for your friend…'),
+        h('p', { class: 'imx-search__status' }, 'Waiting for your friend to connect…'),
+        h('p', { class: 'imx-search__warm' }, STALLED_TIP),
+        startOverButton(),
       ],
     });
   }

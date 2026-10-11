@@ -1,4 +1,4 @@
-import { IDLE_NUDGE_MS, OPENER, REPLY_ATTEMPTS } from './config.js';
+import { IDLE_NUDGE_MS, OPENER, REPLY_ATTEMPTS, TYPING } from './config.js';
 import { createFallbackBot } from './fallbackBot.js';
 import { cleanReply, humanize, typingDelayMs } from './persona.js';
 
@@ -14,6 +14,7 @@ const realTimers = {
  * Drives a chat engine as one side of a conversation, with human pacing: it may open, replies to
  * what it hears after a believable typing delay (one reply at a time, catching up on anything said
  * meanwhile), and nudges once if the chat goes quiet. Used as the deceiver's AI.
+ * "typing…" never starts the instant a message lands: no person can read and react that fast.
  *
  * `getEngine()` returns the engine to use right now; `timers` can be stubbed in tests.
  */
@@ -30,6 +31,7 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
   let isStopped = false;
   let nudgeTimer = null;
   let openerTimer = null;
+  let typingShowTimer = null;
 
   function later(callback, ms) {
     const id = timers.set(() => {
@@ -71,7 +73,7 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
     owesReply = false;
     abort = new AbortController();
     const startedAt = timers.now();
-    onTyping(true);
+    typingShowTimer = later(() => onTyping(true), rng.range(TYPING.readMinMs, TYPING.readMaxMs));
     const line = await composeLine();
     if (isStopped) return;
     const text = humanize(line, persona, rng);
@@ -96,6 +98,7 @@ export function createStranger({ getEngine, persona, rng, onTyping, onSay, timer
   }
 
   function deliver(text) {
+    cancel(typingShowTimer);
     onTyping(false);
     isBusy = false;
     say(text);

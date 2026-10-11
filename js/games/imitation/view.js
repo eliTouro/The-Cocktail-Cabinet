@@ -25,12 +25,15 @@ export function createView(container) {
   const dock = h('div', { class: 'imx-dock' });
   const card = h('section', { class: 'imx-card', hidden: true });
   const avatar = h('span', { class: 'imx-avatar', 'aria-hidden': 'true' }, '?');
+  const briefRole = h('span', { class: 'imx-brief__role' });
+  const briefGoal = h('span', { class: 'imx-brief__goal' });
   const root = h('div', { class: 'imx' },
     h('header', { class: 'imx-head' },
       avatar,
       h('div', { class: 'imx-head__who' }, partnerName, status),
       h('div', { class: 'imx-head__meta' }, roundLabel, scoreLabel, clock),
       h('span', { class: 'imx-timer', 'aria-hidden': 'true' }, timerFill)),
+    h('p', { class: 'imx-brief' }, briefRole, briefGoal),
     log, dock, card);
   container.append(root);
 
@@ -75,7 +78,9 @@ export function createView(container) {
     },
 
     /** `heading` labels the round in the header; `opening` is the chat's first, system line. */
-    showChat({ partnerLabel, heading, opening }) {
+    showChat({ partnerLabel, heading, opening, role, goal }) {
+      briefRole.textContent = `You are the ${role}`;
+      briefGoal.textContent = goal;
       root.dataset.truth = '';
       avatar.textContent = '?';
       partnerName.textContent = partnerLabel;
@@ -143,14 +148,23 @@ export function createView(container) {
      * `truth` (a VERDICT) colours the partner's bubbles by what they really were: the moment of
      * the reveal on the judge's screen. The deceiver already knows, and passes null.
      */
-    showReveal({ truth, lines, actionLabel, onAction }) {
+    showReveal({ truth, lines, actionLabel, onAction, note }) {
       root.dataset.truth = truth ?? '';
       if (truth) avatar.textContent = truth === VERDICT.ai ? 'AI' : 'H';
       dock.replaceChildren(h('div', { class: 'imx-reveal' },
         h('ul', { class: 'imx-reveal__lines' }, lines.map((line) => h('li', {}, line))),
-        actionButton({ label: actionLabel, onClick: onAction })));
+        actionButton({ label: actionLabel, onClick: onAction }),
+        h('p', { class: 'imx-dock__note', 'aria-live': 'polite' }, note)));
       dock.querySelector('button').focus({ preventScroll: true });
       scrollToEnd();
+    },
+
+    /** Updates the line under "Play again"; `isWaiting` greys the button out once it is pressed. */
+    setRevealNote(text, { isWaiting = false } = {}) {
+      const reveal = dock.querySelector('.imx-reveal');
+      if (!reveal) return;
+      reveal.querySelector('.imx-dock__note').textContent = text;
+      if (isWaiting) reveal.querySelector('button').disabled = true;
     },
 
     copyButton,

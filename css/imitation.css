@@ -9,7 +9,7 @@
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   font-family: var(--font-body);
   color: var(--text);
 }
@@ -88,6 +88,36 @@
   transform: scaleX(0);
   transition: transform 0.25s linear;
 }
+
+/* ---------- Goal strip: the viewer's role and how they score, always in view during a round ---------- */
+
+.imx-brief {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line);
+  background: var(--unknown-soft);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.imx-brief__role {
+  flex: none;
+  padding: 0.125rem var(--space-2);
+  border: 1px solid var(--unknown);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--unknown);
+}
+
+.imx-brief__goal { color: var(--text); }
 
 /* ---------- Transcript ---------- */
 
@@ -327,6 +357,19 @@
 
 .imx-card .imx-code { width: min(100%, 34rem); }
 
+/* How to connect: a real sequence, so a numbered list. */
+.imx-steps {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-5);
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.imx-steps--plain { list-style: disc; color: var(--muted); }
+
 .imx-error { min-height: 1.5em; color: #ff8f8f; font-size: 0.875rem; }
 .imx-error:empty { min-height: 0; }
 
@@ -365,10 +408,12 @@
 @keyframes imx-sweep { to { transform: rotate(360deg); } }
 @keyframes imx-pulse { 50% { opacity: 0.4; transform: scale(0.8); } }
 
-/* Phones: a taller stage so the chat has room. */
+/* Phones: a taller stage so the chat, and the connection steps, have room. */
 @media (max-width: 40rem) {
-  .stage.imx-stage { aspect-ratio: 3 / 4; max-height: 80vh; }
+  .stage.imx-stage { aspect-ratio: 9 / 16; max-height: 82vh; }
+  .imx-card { gap: var(--space-2); }
   .imx-head { padding-inline: var(--space-3); }
   .imx-log { padding: var(--space-3); }
+  .imx-brief { padding-inline: var(--space-3); }
   .imx-card { padding: var(--space-4); }
 }

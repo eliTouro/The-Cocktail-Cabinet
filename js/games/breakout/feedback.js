@@ -73,6 +73,7 @@ export function createFeedback(container, modeId) {
     start(state) {
       shownLevel = 0;
       shownLives = -1;
+      play('pickup');
       hud.showHint('');
       showMeters(state);
       showLevel(state, { announce: false });

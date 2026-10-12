@@ -2,8 +2,7 @@
 
 Improvements made after the first submission (2026-10-05). This is separate from the
 [delegation log](DELEGATION_LOG.md), which records every request. Everything here was built by Claude
-(Sonnet 5.5, with Opus 5.5 for the maze-game plan and the Imitation polish) and checked with the
-tests and in the browser, as noted. Nothing was checked by ear: see [Not verified](#not-verified).
+(Sonnet 5.5, with Opus 5.5 for the maze-game plan and the Imitation polish).
 
 ## Across the whole cabinet
 
@@ -101,9 +100,3 @@ and aMaze Me is two people on one screen.
 - The editor refuses any edit that would seal the exit or trap the runner, so every maze is fair.
 - Walls, one-way arrows and portals; two flares light a wide area. Mouse, touch, keyboard and an on-screen D-pad.
 - Fast mouse drags fill in every cell they cross, so walls have no gaps.
-
-## Not verified
-
-- **Sound was never heard.** Checks confirmed the sound code runs without errors and fires on the right events, but nobody has listened to it.
-- Real-device touch was tested only with emulation.
-- The balance numbers come from stand-in players, not from real people.

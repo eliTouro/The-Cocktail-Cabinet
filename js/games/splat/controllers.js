@@ -49,11 +49,17 @@ export function createColumnPlacer(keyboard, pointer) {
     aim = Math.min(Math.max(aim + direction * PLACER_KEY_SPEED * dt, 0), FLOOR_Y);
   }
 
+  function track(dt) {
+    followPointer();
+    followKeys(dt);
+  }
+
   return {
     aim: () => aim,
+    /** Follows the mouse and keys without sending a column, for the moments before a round starts. */
+    track,
     read(dt) {
-      followPointer();
-      followKeys(dt);
+      track(dt);
       const press = pointer.consumePress();
       if (press) aim = press.y;
       const keyed = COLUMN_KEYS.map((code) => keyboard.consumeTap(code)).some(Boolean);

@@ -1,4 +1,4 @@
-import { AI_FLAP_BELOW_TARGET, AI_SKILL, GRAVITY, HOVER_Y } from './config.js';
+import { AI_FLAP_BELOW_TARGET, AI_SKILL, HOVER_Y } from './config.js';
 
 /**
  * The computer pilot. It only receives `observe(state)` snapshots, so it can see nothing a human

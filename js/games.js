@@ -15,6 +15,7 @@
  *
  * Modes: `tone` says who plays the classic role. 'human' means you do; 'computer' means the
  * computer does and you take the other side. `short` labels the chip on the game card.
+ * `tone: 'versus'` marks a game for two people on one screen; it has no computer side.
  */
 export const GAMES = [
   {
@@ -86,6 +87,15 @@ export const GAMES = [
       { id: 'computer', tone: 'computer', short: 'Make the code', label: 'Make the code', blurb: 'You hide a colour code and the computer tries to crack it from the pegs alone. Stump it to reach the next level.' },
     ],
     load: () => import('./games/mastermind.js'),
+  },
+  {
+    id: 'amaze-me',
+    name: 'aMaze Me',
+    tagline: 'Design a maze, hand it over, and watch a friend get lost in it.',
+    modes: [
+      { id: 'duel', tone: 'versus', short: '2 players', label: 'Two players, one screen', blurb: 'Take turns on one screen: one of you builds a maze in 75 seconds, the other runs it in the fog. Then swap. The maze that holds its runner longest wins.' },
+    ],
+    load: () => import('./games/amaze-me.js'),
   },
 ];
 

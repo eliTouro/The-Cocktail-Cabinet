@@ -1,6 +1,6 @@
 # The Cocktail Cabinet
 
-One web page, seven arcade games, each playable by a human or by the computer on either side.
+One web page, eight arcade games. Seven are playable by a human or by the computer on either side; the eighth, aMaze Me, is for two people on one screen.
 Static site: HTML, CSS and JavaScript only. No server, no API keys.
 
 ## Run locally
@@ -21,11 +21,11 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/main.js` | Entry point |
 | `js/cabinet.js` | Shell: menu, side picker, hosts a running game |
 | `js/router.js` | Hash routing (`#/snake`, `#/snake/computer`) |
-| `js/games.js` | Registry of the seven games and the game contract |
+| `js/games.js` | Registry of the eight games and the game contract |
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
 | `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
-| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Mastermind is the seventh game; until built, any game without real code shows a placeholder. Imitation also has `css/imitation.css` |
+| `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Mastermind is the seventh game; until built, any game without real code shows a placeholder. Imitation, Mastermind and aMaze Me also have their own `css/<id>.css` |
 | `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |
@@ -41,8 +41,9 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
 | Imitation | Be the judge: question a friend and call whether they are human or an AI | Be the deceiver: each round, answer yourself or let an in-browser AI (Llama-3.2-1B via WebLLM, scripted fallback) answer for you. Two browsers, direct WebRTC with a copy-paste invite link, no relay. Right call +1 judge, wrong +1 deceiver, unlimited rounds, score kept |
 | Mastermind | Break the code: crack the computer's hidden colour code from red and white pegs | Make the code: hide one and the computer cracks it from the pegs alone (same scoring and guess limit, never sees your secret); stump it to level up. A run of 10+ levels with more pegs and colours and a smarter computer |
+| aMaze Me | Two players, one screen: one builds a maze in 75 s (the editor refuses any edit that would seal the Exit or trap the runner), the other runs it in fog of war in 90 s (sight radius about 2 squares, glowing Exit, 2 flares), then swap; the maze that held its runner longest wins (a maze nobody escapes scores 120). Walls, one-way arrows and a portal pair. No computer side, by design | None: the "flip" is swapping roles with your friend |
 
-In every game (except Imitation, which is a chat between two people) the computer uses the same rules, collisions and speed limits as a human, sees only
+In every game except Imitation (a chat between two people) and aMaze Me (two people, one screen, no computer side) the computer uses the same rules, collisions and speed limits as a human, sees only
 what a human could see, and its skill ramps up over time so the human's challenge grows gradually.
 Tests simulate full AI games (`npm test`).
 

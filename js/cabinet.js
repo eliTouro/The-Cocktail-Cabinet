@@ -53,10 +53,11 @@ function menuView() {
   return [
     h('header', { class: 'hero' },
       h('h1', { class: 'hero__title' }, 'The Cocktail', h('span', { class: 'hero__title-accent' }, 'Cabinet')),
-      h('p', { class: 'hero__lede' }, 'Seven arcade games. Play the classic side, or hand it to the computer and take the other.'),
+      h('p', { class: 'hero__lede' }, 'Eight arcade games. Play the classic side, hand it to the computer, or challenge a friend on one screen.'),
       h('ul', { class: 'legend' },
         legendItem('human', 'You play the classic game'),
-        legendItem('computer', 'The computer plays it, you take the other side'))),
+        legendItem('computer', 'The computer plays it, you take the other side'),
+        legendItem('versus', 'Two players take turns on one screen'))),
     h('ul', { class: 'shelf' }, GAMES.map(gameCard)),
   ];
 }
@@ -92,7 +93,7 @@ function sidePickerView(game) {
         h('div', {},
           h('h1', { class: 'picker__title' }, game.name),
           h('p', { class: 'picker__tagline' }, game.tagline))),
-      h('p', { class: 'picker__prompt' }, 'Choose your side'),
+      h('p', { class: 'picker__prompt' }, game.modes.length > 1 ? 'Choose your side' : 'Ready to play'),
       h('ul', { class: 'sides' }, game.modes.map((mode) => sideOption(game, mode)))),
   ];
 }

@@ -14,7 +14,7 @@ import {
   CODE_KIND, SignalCodeError, decodeSignal, encodeSignal, inviteLink, packSdp, readInviteFromHash, roleHash,
 } from '../js/games/imitation/signal.js';
 import { createStranger } from '../js/games/imitation/stranger.js';
-import { revealLines, scoreLine } from '../js/games/imitation/summary.js';
+import { goalLine, matchOutcome, revealLines, scoreLine } from '../js/games/imitation/summary.js';
 import { parseHash } from '../js/router.js';
 
 const FINGERPRINT = Array.from({ length: 32 }, (_, i) => (i * 7 + 3).toString(16).toUpperCase().padStart(2, '0')).join(':');
@@ -188,8 +188,23 @@ test('the reveal says what the deceiver did, who scored and the score by role', 
   const judgeLines = revealLines(result, ROLE.judge, score);
   assert.match(judgeLines[0], /written by the AI/);
   assert.match(judgeLines[1], /You said human\. The point goes to the deceiver/);
-  assert.equal(judgeLines[2], 'Judge 2 : Deceiver 1');
+  assert.equal(judgeLines[2], 'Judge (you) 2 : Deceiver 1');
   assert.match(revealLines(result, ROLE.deceiver, score)[1], /The judge said human\. The point is yours/);
+  assert.equal(revealLines(result, ROLE.deceiver, score)[2], 'Judge 2 : Deceiver (you) 1');
+});
+
+test('the goal strip tells each player how they score, and the deceiver goal follows their choice', () => {
+  assert.match(goalLine(ROLE.judge), /human or an AI\? A right call is your point/);
+  assert.equal(goalLine(ROLE.judge, VERDICT.ai), goalLine(ROLE.judge), 'the judge goal never depends on the truth');
+  assert.match(goalLine(ROLE.deceiver, VERDICT.human), /answering yourself.*judge calls you an AI/);
+  assert.match(goalLine(ROLE.deceiver, VERDICT.ai), /AI is answering.*judge calls it human/);
+});
+
+test('the match outcome is read from the viewer side', () => {
+  const score = { judge: 3, deceiver: 1 };
+  assert.equal(matchOutcome(score, ROLE.judge), 'won');
+  assert.equal(matchOutcome(score, ROLE.deceiver), 'lost');
+  assert.equal(matchOutcome({ judge: 2, deceiver: 2 }, ROLE.deceiver), 'drawn');
 });
 
 /* ---------- Chat protocol ---------- */
@@ -257,7 +272,7 @@ test('the stranger swaps a giveaway from the model for a scripted line', async (
     onSay: (text) => said.push(text),
   });
   stranger.hear('hi');
-  await timers.advance(2 * TYPING.maxMs);
+  await timers.advance(TYPING.maxMs);
   assert.equal(said.length, 1);
   assert.doesNotMatch(said[0], /assist|help|\bai\b/i);
 });
@@ -401,6 +416,34 @@ test('the stranger replies after a human-like typing delay, one reply at a time'
   assert.ok(said[0].at >= TYPING.thinkMinMs);
   assert.equal(typing[0], true);
   assert.equal(stranger.history().filter((item) => item.role === 'self').length, 2);
+});
+
+test('the AI types at a human speed and only shows "typing…" after reading the message', async () => {
+  const wordsPerMinute = (msPerChar) => 60000 / (msPerChar * 5);
+  assert.ok(wordsPerMinute(TYPING.msPerCharMin) <= 110, 'no faster than a fast typist');
+  assert.ok(wordsPerMinute(TYPING.msPerCharMax) >= 40, 'no slower than an average one');
+  assert.ok(TYPING.readMaxMs <= TYPING.thinkMinMs, '"typing…" always shows before the reply lands');
+
+  const timers = createFakeTimers();
+  const rng = createRng(12);
+  const typing = [];
+  const said = [];
+  const stranger = createStranger({
+    getEngine: () => createFallbackBot(rng),
+    persona: createPersona(rng, 0.5),
+    rng,
+    timers,
+    onTyping: (isTyping) => typing.push({ isTyping, at: timers.now() }),
+    onSay: (text) => said.push(text),
+  });
+  stranger.hear('where are you from?');
+  await timers.advance(TYPING.readMinMs - 1);
+  assert.deepEqual(typing, [], 'not typing the instant the message lands');
+  await timers.advance(TYPING.maxMs);
+  assert.equal(typing[0].isTyping, true);
+  assert.ok(typing[0].at >= TYPING.readMinMs && typing[0].at <= TYPING.readMaxMs);
+  assert.equal(typing.at(-1).isTyping, false, 'typing ends when the reply lands');
+  assert.equal(said.length, 1);
 });
 
 test('the stranger nudges once when the chat goes quiet, and stop() cancels everything', async () => {

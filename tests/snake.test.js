@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { LEVEL_COUNT, elapsedAtLevel } from '../js/core/level.js';
 import { createRng } from '../js/core/rng.js';
 import { chooseAction } from '../js/games/snake/ai.js';
-import { APPLE_RULES, DIFFICULTY, ESCAPE_LENGTH, difficultyAt } from '../js/games/snake/config.js';
-import { createState, keyOf, legalActions, placeApple, reachableCells, spawnRandomApple, step } from '../js/games/snake/rules.js';
+import {
+  APPLE_RULES, DIFFICULTY, ESCAPE_LENGTH, ESCAPE_WARNING_MARGIN, SECONDS_TO_HARDEST, WIN_APPLES, difficultyAt,
+} from '../js/games/snake/config.js';
+import {
+  createState, isBoxedIn, keyOf, legalActions, placeApple, reachableCells, reachableCount, spawnRandomApple, step,
+} from '../js/games/snake/rules.js';
 import { createSession } from '../js/games/snake/session.js';
 
 const GRID = { cols: 10, rows: 8 };
@@ -174,4 +179,96 @@ test('a full computer-mode session ends in a death or an escape, never a hang', 
   }
   assert.ok(['dead', 'escaped'].includes(session.outcome));
   assert.ok(session.state.snake.length <= ESCAPE_LENGTH);
+});
+
+test('starting at level 10 gives the hardest knobs straight away, starting at level 1 the easiest', () => {
+  for (const [modeId, knobs] of Object.entries(DIFFICULTY)) {
+    const hardest = createSession({ modeId, rng: createRng(1), startLevel: LEVEL_COUNT });
+    const easiest = createSession({ modeId, rng: createRng(1), startLevel: 1 });
+    assert.equal(hardest.level(), LEVEL_COUNT);
+    assert.equal(easiest.level(), 1);
+    for (const [name, { from, to }] of Object.entries(knobs)) {
+      assert.ok(Math.abs(difficultyAt(modeId, hardest.elapsed)[name] - to) < 1e-9, `${modeId}.${name} at level ${LEVEL_COUNT}`);
+      assert.ok(Math.abs(difficultyAt(modeId, easiest.elapsed)[name] - from) < 1e-9, `${modeId}.${name} at level 1`);
+    }
+  }
+});
+
+test('a round tells the game when the level goes up, once per level', () => {
+  const events = [];
+  const session = createSession({ modeId: 'computer', rng: createRng(4), onEvent: (name) => events.push(name) });
+  session.state.apples.length = 0;
+  session.update(FRAME);
+  assert.deepEqual(events, []);
+  session.elapsed = elapsedAtLevel(2, SECONDS_TO_HARDEST.computer);
+  session.update(FRAME);
+  session.update(FRAME);
+  assert.deepEqual(events, ['level-up']);
+});
+
+function humanSessionNextToApple(events) {
+  const session = createSession({ modeId: 'human', rng: createRng(6), onEvent: (name) => events.push(name) });
+  const head = session.state.snake[0];
+  session.state.apples = [{ x: head.x + 1, y: head.y }];
+  return session;
+}
+
+const oneStep = (session) => session.update(difficultyAt(session.modeId, session.elapsed).stepSeconds + FRAME);
+
+test('eating an apple in human mode is reported and puts a new apple on the board', () => {
+  const events = [];
+  const session = humanSessionNextToApple(events);
+  oneStep(session);
+  assert.deepEqual(events, ['ate']);
+  assert.equal(session.state.apples.length, 1);
+});
+
+test('eating the last apple of the target wins the round', () => {
+  const events = [];
+  const session = humanSessionNextToApple(events);
+  const head = session.state.snake[0];
+  session.state.snake.push(...Array.from({ length: WIN_APPLES - 1 }, (_, index) => ({ x: head.x - 3 - index, y: head.y })));
+  oneStep(session);
+  assert.equal(session.outcome, 'won');
+  assert.deepEqual(events, ['won']);
+});
+
+test('crashing is reported as the outcome, once, and the round then stops', () => {
+  const events = [];
+  const session = createSession({ modeId: 'human', rng: createRng(8), onEvent: (name) => events.push(name) });
+  for (let frame = 0; frame < 60 * 30; frame += 1) session.update(FRAME);
+  assert.equal(session.outcome, 'dead');
+  assert.deepEqual(events.filter((name) => name === 'dead'), ['dead']);
+});
+
+test('the computer-mode snake is warned about once, when it gets within the warning margin of escaping', () => {
+  const events = [];
+  const session = createSession({ modeId: 'computer', rng: createRng(10), onEvent: (name) => events.push(name) });
+  const head = session.state.snake[0];
+  const warningLength = ESCAPE_LENGTH - ESCAPE_WARNING_MARGIN;
+  session.state.snake.push(...Array.from({ length: warningLength - session.state.snake.length - 1 }, (_, index) => ({ x: head.x - 3 - index, y: head.y + 1 })));
+  session.state.apples = [{ x: head.x + 1, y: head.y }];
+  oneStep(session);
+  assert.deepEqual(events, ['ate', 'near-escape']);
+});
+
+test('a snake with less open room than its length is boxed in', () => {
+  assert.equal(isBoxedIn(stateWith([{ x: 5, y: 4 }, { x: 4, y: 4 }, { x: 3, y: 4 }])), false);
+  const cramped = { cols: 4, rows: 2, direction: 'left', apples: [], alive: true };
+  cramped.snake = [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 1 }, { x: 2, y: 1 }];
+  assert.equal(isBoxedIn(cramped), true);
+});
+
+test('counting reachable cells agrees with listing them', () => {
+  const state = stateWith([{ x: 5, y: 4 }, { x: 4, y: 4 }, { x: 4, y: 5 }, { x: 5, y: 5 }]);
+  assert.equal(reachableCount(state), reachableCells(state).size);
+});
+
+test('a crash says whether the snake hit the wall or its own tail', () => {
+  assert.equal(step(stateWith([{ x: 9, y: 4 }, { x: 8, y: 4 }]), null).crashedInto, 'wall');
+  const loop = [{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 4 }, { x: 5, y: 3 }, { x: 4, y: 3 }];
+  assert.equal(step(stateWith(loop, 'up'), 'right').crashedInto, 'tail');
+  const session = createSession({ modeId: 'human', rng: createRng(8) });
+  for (let frame = 0; frame < 60 * 30 && !session.outcome; frame += 1) session.update(FRAME);
+  assert.equal(session.crashedInto, 'wall');
 });

@@ -1,3 +1,4 @@
+import { startLevelFromUrl } from '../core/level.js';
 import { createOverlay } from '../core/overlay.js';
 import { createRng } from '../core/rng.js';
 import { randomCode } from './mastermind/codemaker.js';
@@ -5,6 +6,7 @@ import { CODE_COLOURS, PAUSE_MS } from './mastermind/config.js';
 import { createEntry } from './mastermind/entry.js';
 import { guessesLeft } from './mastermind/rules.js';
 import { createRun } from './mastermind/session.js';
+import { sounds } from './mastermind/sounds.js';
 import { createView } from './mastermind/view.js';
 
 const STYLESHEET_URL = new URL('../../css/mastermind.css', import.meta.url).href;
@@ -20,6 +22,12 @@ const INTRO = {
   human: 'The computer has hidden a colour code. Click a colour, or press its number key, then press Enter to guess. A red peg is the right colour in the right place; a white peg is the right colour in the wrong place.',
   computer: 'Hide a colour code, or press Random code, then lock it in. The computer cracks it from red and white pegs alone. Use up its guesses and you move up a level.',
 };
+
+const GOAL = {
+  human: (settings) => `Goal: crack the hidden code in ${settings.guesses} guesses or fewer.`,
+  computer: (settings) => `Goal: hide a code the computer cannot crack in ${settings.guesses} guesses.`,
+};
+const FEEDBACK_SOUND_DELAY_MS = 180;
 
 const EDIT_KEYS = ['ArrowLeft', 'ArrowRight', 'Backspace', 'Delete'];
 const SECRET_LABEL = { human: "Computer's secret", computer: 'Your secret code' };
@@ -49,9 +57,9 @@ export function mount(container, { mode }) {
   let pendingGuess = null;
 
   const view = createView(container, {
-    onColour: (colour) => edit(() => entry.place(colour)),
-    onSlot: (place) => { if (phase === 'guessing') edit(() => entry.select(place)); },
-    onSecretSlot: (place) => { if (phase === 'hiding') edit(() => entry.select(place)); },
+    onColour: (colour) => { sounds.pickColour(); edit(() => entry.place(colour)); },
+    onSlot: (place) => { if (phase === 'guessing') { sounds.editRow(); edit(() => entry.select(place)); } },
+    onSecretSlot: (place) => { if (phase === 'hiding') { sounds.editRow(); edit(() => entry.select(place)); } },
   });
 
   function edit(change) {
@@ -107,14 +115,14 @@ export function mount(container, { mode }) {
     if (current === 'guessing') {
       return [
         { label: 'Submit guess', primary: true, onClick: submitGuess },
-        { label: 'Clear row', onClick: () => edit(() => entry.reset()) },
+        { label: 'Clear row', onClick: () => { sounds.editRow(); edit(() => entry.reset()); } },
       ];
     }
     if (current === 'hiding') {
       return [
         { label: 'Lock in code', primary: true, onClick: lockInCode },
-        { label: 'Random code', onClick: () => edit(() => entry.set(randomCode(run.settings, rng))) },
-        { label: 'Clear', onClick: () => edit(() => entry.reset()) },
+        { label: 'Random code', onClick: () => { sounds.editRow(); edit(() => entry.set(randomCode(run.settings, rng))); } },
+        { label: 'Clear', onClick: () => { sounds.editRow(); edit(() => entry.reset()); } },
       ];
     }
     return [];
@@ -126,10 +134,11 @@ export function mount(container, { mode }) {
     pendingGuess = null;
     overlay.hide();
     view.buildRound(settings, { secretLabel: SECRET_LABEL[modeId] });
+    view.setGoal(GOAL[modeId](settings));
     if (modeId === 'human') {
       run.startLevel();
       setPhase('guessing');
-      view.setMessage(`Level ${run.level}: crack the code. Press 1 to ${settings.colours} to place colours.`);
+      view.setMessage(`Click colours or press 1 to ${settings.colours}, then Enter to guess.`);
     } else {
       setPhase('hiding');
       view.setMessage('Choose your code, then lock it in.');
@@ -146,10 +155,13 @@ export function mount(container, { mode }) {
     if (phase !== 'guessing') return;
     const result = run.guess(entry.code);
     if (!result.ok) {
+      sounds.refused();
       view.setMessage(REJECTIONS[result.reason], { warning: true });
       return;
     }
     const last = run.round.history.at(-1).feedback;
+    sounds.lockIn();
+    schedule(() => sounds.feedback(last), FEEDBACK_SOUND_DELAY_MS);
     view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'red peg')}, ${plural(last.white, 'white peg')}.`);
     entry.reset();
     refresh();
@@ -160,9 +172,11 @@ export function mount(container, { mode }) {
     if (phase !== 'hiding') return;
     const result = run.startLevel(entry.code);
     if (!result.ok) {
+      sounds.refused();
       view.setMessage(REJECTIONS[result.reason], { warning: true });
       return;
     }
+    sounds.lockIn();
     setPhase('computer');
     view.setMessage('Code locked. The computer sees only the pegs.');
     refresh();
@@ -170,6 +184,7 @@ export function mount(container, { mode }) {
   }
 
   function computerTurn() {
+    sounds.think();
     pendingGuess = run.computerGuess().guess;
     draw();
     schedule(revealPegs, PAUSE_MS.reveal);
@@ -179,6 +194,7 @@ export function mount(container, { mode }) {
     pendingGuess = null;
     refresh();
     const last = run.round.history.at(-1).feedback;
+    sounds.feedback(last);
     view.setMessage(`Guess ${run.round.history.length}: ${plural(last.black, 'red peg')}, ${plural(last.white, 'white peg')}.`);
     if (run.finished) finishLevel();
     else schedule(computerTurn, PAUSE_MS.think);
@@ -199,9 +215,12 @@ export function mount(container, { mode }) {
     const used = round.history.length;
     const total = run.cleared + (cleared ? 1 : 0);
     const secret = `Secret revealed: ${colourNames(round.secret)}.`;
+    if (cleared) sounds.levelCleared();
+    else sounds.levelLost();
     overlay.show({
       ...resultText({ cleared, used, level, total, secret }),
       actionLabel: cleared ? 'Next level' : 'Play again',
+      levelPicker: !cleared,
       onAction: cleared ? nextLevel : startNewRun,
     });
   }
@@ -219,12 +238,14 @@ export function mount(container, { mode }) {
   }
 
   function nextLevel() {
+    sounds.nextLevel();
     run.advance();
     beginLevel();
   }
 
-  function startNewRun() {
-    run = createRun({ modeId, rng });
+  function startNewRun(startLevel) {
+    sounds.start();
+    run = createRun({ modeId, rng, startLevel });
     beginLevel();
   }
 
@@ -245,8 +266,10 @@ export function mount(container, { mode }) {
   const isEditKey = (key) => colourKey(key) !== null || EDIT_KEYS.includes(key);
 
   function applyEditKey(key) {
-    if (colourKey(key) !== null) entry.place(colourKey(key));
-    else if (key === 'ArrowLeft') entry.move(-1);
+    if (colourKey(key) !== null) {
+      sounds.pickColour();
+      entry.place(colourKey(key));
+    } else if (key === 'ArrowLeft') entry.move(-1);
     else if (key === 'ArrowRight') entry.move(1);
     else if (key === 'Backspace') entry.backspace();
     else entry.clearSelected();
@@ -257,9 +280,10 @@ export function mount(container, { mode }) {
     title: 'Mastermind',
     detail: INTRO[modeId],
     actionLabel: 'Start',
-    onAction: beginLevel,
+    levelPicker: true,
+    onAction: startNewRun,
   });
-  overlay.setScore('Level 1');
+  overlay.setScore(`Level ${startLevelFromUrl()}`);
 
   return {
     destroy() {

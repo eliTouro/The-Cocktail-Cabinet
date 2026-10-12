@@ -23,7 +23,7 @@ export const GAMES = [
     name: 'Snake',
     tagline: 'Eat, grow, and never run into yourself.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Steer', label: 'Steer the snake', blurb: 'Collect apples and grow longer. The tail is the only enemy.' },
+      { id: 'human', tone: 'human', short: 'Steer', label: 'Steer the snake', blurb: 'Eat 30 apples without hitting a wall or your own tail. The snake speeds up as you go.' },
       { id: 'computer', tone: 'computer', short: 'Place apples', label: 'Place the apples', blurb: 'The computer steers. Drop apples where they make it work for its dinner.' },
     ],
     load: () => import('./games/snake.js'),
@@ -53,7 +53,7 @@ export const GAMES = [
     name: 'Asteroids',
     tagline: 'Rotate, thrust, and shatter the rocks.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Fly ship', label: 'Fly the ship', blurb: 'Fly the ship, shoot the polygon rocks and survive three lives.' },
+      { id: 'human', tone: 'human', short: 'Fly ship', label: 'Fly the ship', blurb: 'Fly the ship, shoot the polygon rocks and survive 90 seconds with three lives.' },
       { id: 'computer', tone: 'computer', short: 'Send rocks', label: 'Send the rocks', blurb: 'The computer pilots. Launch rocks from the edges with a refilling budget. Destroy its 3 lives before it survives 90 seconds.' },
     ],
     load: () => import('./games/asteroids.js'),

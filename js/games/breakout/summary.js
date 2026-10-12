@@ -6,14 +6,14 @@ const TOTAL_BRICKS = WALL.columns * WALL.rows;
 export const isOver = (state) => state.status === 'won' || state.status === 'lost';
 
 export function scoreLine(state) {
-  if (state.modeId === 'human') return `Score ${state.score}  ·  Lives ${state.lives}/${LIVES}  ·  Bricks ${bricksLeft(state)}`;
-  return `Your score ${wallScore(state)}  ·  Computer lives ${state.lives}/${LIVES}  ·  Bricks left ${bricksLeft(state)}`;
+  const score = state.modeId === 'human' ? `Score ${state.score}` : `Your score ${wallScore(state)}`;
+  return `${score}  ·  ${bricksLeft(state)} of ${TOTAL_BRICKS} bricks left`;
 }
 
 export function startPanel(modeId, label) {
   const detail = modeId === 'human'
-    ? 'Move the mouse, drag a finger, or use the arrow keys or A and D to steer the paddle. Click, tap or press Space to launch. Hit the ball near the paddle edge to angle it. Clear all 50 bricks with 3 lives.'
-    : 'The computer has the paddle and wants your wall gone. Slide the wall with the mouse, a finger, or the arrow keys or A and D. A moving wall also nudges the ball. Make the computer drop all 3 lives before it clears the wall.';
+    ? 'Hit the ball near the paddle edge to angle it. It speeds up and the paddle shrinks as the round goes on.'
+    : 'A moving wall nudges the ball it hits. Do not let the computer clear the wall.';
   return { title: label, detail, actionLabel: 'Start' };
 }
 

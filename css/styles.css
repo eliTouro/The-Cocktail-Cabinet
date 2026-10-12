@@ -609,6 +609,12 @@ svg { display: block; }
 .hud__hint { color: var(--human); }
 .hud__hint:empty { display: none; }
 
+@media (max-width: 30rem) {
+  .hud { padding: var(--space-2); font-size: 0.6875rem; }
+  .hud__top { margin-top: var(--space-4); }
+  .hud__controls { display: none; }
+}
+
 .mute-toggle {
   position: fixed;
   top: var(--space-4);

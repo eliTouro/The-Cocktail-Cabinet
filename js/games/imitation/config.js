@@ -65,13 +65,19 @@ export const REPLY_ATTEMPTS = 3;
 /** Only the most recent messages go into the prompt; small models lose the plot on long context. */
 export const PROMPT_HISTORY_LIMIT = 12;
 
-/** Human-like reply timing. */
+/**
+ * Human-like reply timing. A person needs a moment to read before "typing…" shows (readMs, kept
+ * under thinkMinMs so it always shows before the reply lands), then types at roughly 50-100 words
+ * a minute (110-220 ms a character); faster than that is a giveaway.
+ */
 export const TYPING = {
+  readMinMs: 500,
+  readMaxMs: 900,
   thinkMinMs: 900,
   thinkMaxMs: 2600,
-  msPerCharMin: 70,
-  msPerCharMax: 140,
-  maxMs: 11000,
+  msPerCharMin: 110,
+  msPerCharMax: 220,
+  maxMs: 13000,
 };
 
 /** The AI speaks first in about half the rounds, and nudges the judge if they go quiet. */

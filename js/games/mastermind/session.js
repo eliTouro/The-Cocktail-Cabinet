@@ -1,3 +1,4 @@
+import { clampLevel } from '../../core/level.js';
 import { breakerSkill, levelSettings } from './config.js';
 import { chooseGuess } from './breaker.js';
 import { randomCode } from './codemaker.js';
@@ -6,11 +7,12 @@ import { checkCode, createRound, submitGuess } from './rules.js';
 /**
  * A run of levels. In 'human' mode the person breaks codes the computer made; in 'computer' mode
  * the person makes codes and the computer breaks them. Either way a level is cleared when the
- * person comes out ahead, and the run ends on the first level they do not clear.
+ * person comes out ahead, and the run ends on the first level they do not clear. `startLevel`
+ * lets a run begin partway up the ramp (level select).
  */
-export function createRun({ modeId, rng }) {
+export function createRun({ modeId, rng, startLevel = 1 }) {
   const personBreaks = modeId === 'human';
-  let level = 1;
+  let level = clampLevel(startLevel);
   let cleared = 0;
   let round = null;
 

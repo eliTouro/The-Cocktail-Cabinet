@@ -2,7 +2,7 @@ import {
   HEIGHT, LARGEST_TIER, NUMPAD_SIZE_KEYS, ROCK_TIERS, SAFE_RADIUS, SENDER_PANEL, SIZE_KEYS, WAVE, WAVE_PAUSE, WIDTH,
 } from './config.js';
 import { wrappedDistance } from './geometry.js';
-import { launchToward } from './rules.js';
+import { difficultyClock, launchToward } from './rules.js';
 
 const LEFT_KEYS = ['ArrowLeft', 'KeyA'];
 const RIGHT_KEYS = ['ArrowRight', 'KeyD'];
@@ -13,33 +13,32 @@ const MAX_PLACEMENT_TRIES = 20;
 
 const anyDown = (keyboard, codes) => codes.some((code) => keyboard.isDown(code));
 
-/** Human pilot: arrows or WASD rotate and thrust, Space fires. */
-export function createShipInput(keyboard) {
+/** Human pilot: arrows or WASD rotate and thrust, Space fires; touch buttons do the same on a phone. */
+export function createShipInput(keyboard, touchPad) {
   return {
-    read: () => ({
-      rotate: Number(anyDown(keyboard, RIGHT_KEYS)) - Number(anyDown(keyboard, LEFT_KEYS)),
-      thrust: anyDown(keyboard, THRUST_KEYS),
-      fire: anyDown(keyboard, FIRE_KEYS),
-      spawns: [],
-    }),
+    read() {
+      const touch = touchPad.read();
+      const rotate = Number(anyDown(keyboard, RIGHT_KEYS)) - Number(anyDown(keyboard, LEFT_KEYS)) + touch.rotate;
+      return {
+        rotate: Math.sign(rotate),
+        thrust: anyDown(keyboard, THRUST_KEYS) || touch.thrust,
+        fire: anyDown(keyboard, FIRE_KEYS) || touch.fire,
+        spawns: [],
+      };
+    },
   };
 }
 
-function sizeButtonBounds(tier) {
-  const left = SENDER_PANEL.left + tier * (SENDER_PANEL.buttonWidth + SENDER_PANEL.buttonGap);
-  return { left, right: left + SENDER_PANEL.buttonWidth };
-}
-
 export function sizeButtonBox(tier) {
-  const { left, right } = sizeButtonBounds(tier);
-  return { x: left, y: SENDER_PANEL.top, width: right - left, height: HEIGHT - SENDER_PANEL.top - 6 };
+  const { left, top, buttonWidth, buttonHeight, buttonGap } = SENDER_PANEL;
+  return { x: left, y: top + tier * (buttonHeight + buttonGap), width: buttonWidth, height: buttonHeight };
 }
 
-function tierUnderPanelPress(press) {
-  if (press.y < SENDER_PANEL.top) return null;
+/** The size button under a point on the field, or null when the point is on open playfield. */
+export function tierAt(point) {
   const tier = ROCK_TIERS.findIndex((_, index) => {
-    const { left, right } = sizeButtonBounds(index);
-    return press.x >= left && press.x <= right;
+    const box = sizeButtonBox(index);
+    return point.x >= box.x && point.x <= box.x + box.width && point.y >= box.y && point.y <= box.y + box.height;
   });
   return tier === -1 ? null : tier;
 }
@@ -65,9 +64,9 @@ export function createRockSender(keyboard, pointer) {
     read(tuning) {
       pickSizeFromKeys();
       const press = pointer.consumePress();
-      const buttonTier = press ? tierUnderPanelPress(press) : null;
+      const buttonTier = press ? tierAt(press) : null;
       if (buttonTier !== null) tier = buttonTier;
-      const isLaunch = press && buttonTier === null && press.y < SENDER_PANEL.top;
+      const isLaunch = press && buttonTier === null;
       const spawns = isLaunch ? [launchToward(press, tier, tuning.rockSpeed)] : [];
       return { rotate: 0, thrust: false, fire: false, spawns };
     },
@@ -91,7 +90,7 @@ export function createWaveGenerator(rng) {
   let nextWaveTime = WAVE_PAUSE;
 
   function buildWave(state) {
-    const { count, speed } = WAVE(state.time);
+    const { count, speed } = WAVE(difficultyClock(state));
     return Array.from({ length: count }, () => {
       const start = edgeStart(rng, state.ship);
       const heading = Math.atan2(HEIGHT / 2 - start.y, WIDTH / 2 - start.x) + rng.range(-WAVE_ENTRY_SPREAD, WAVE_ENTRY_SPREAD);

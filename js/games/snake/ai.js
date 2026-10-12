@@ -1,4 +1,4 @@
-import { firstStepToApple, legalActions, reachableCells, simulate } from './rules.js';
+import { firstStepToApple, legalActions, reachableCount, simulate } from './rules.js';
 
 /**
  * The computer's steering: a pure function of what is on the board (the state's grid, snake and
@@ -25,7 +25,7 @@ export function chooseAction(state, skill, rng) {
   return careful ? mostSpacious(survivable).action : rng.pick(survivable).action;
 }
 
-const roomAround = (state) => reachableCells(state).size;
+const roomAround = (state) => reachableCount(state);
 
 /** Enough open cells ahead to hold the snake's own length: a cheap test for "not a dead end". */
 const hasRoomToLive = (state) => roomAround(state) >= state.snake.length;

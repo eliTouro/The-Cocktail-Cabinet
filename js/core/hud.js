@@ -33,30 +33,32 @@ export function createHud(container, { goal, controls }) {
     const readout = h('span', { class: 'meter__readout' });
     const node = h('div', { class: 'meter', 'data-meter': id }, label, track, readout);
     meters.append(node);
-    const parts = { node, label, track, readout, segments: 0 };
+    const parts = { node, label, track, readout, shape: null, segments: 0 };
     meterNodes.set(id, parts);
     return parts;
   }
 
   function fillSegments(parts, value, max) {
-    if (parts.segments !== max) {
+    if (parts.shape !== 'segments' || parts.segments !== max) {
       parts.track.replaceChildren(...Array.from({ length: max }, () => h('i', { class: 'meter__segment' })));
+      parts.shape = 'segments';
       parts.segments = max;
     }
     [...parts.track.children].forEach((segment, index) => segment.toggleAttribute('data-on', index < value));
   }
 
   function fillBar(parts, value, max) {
-    if (parts.segments !== 0) {
+    if (parts.shape !== 'bar') {
       parts.track.replaceChildren(h('i', { class: 'meter__fill' }));
-      parts.segments = 0;
+      parts.shape = 'bar';
     }
     parts.track.firstChild.style.transform = `scaleX(${Math.min(Math.max(value / max, 0), 1)})`;
   }
 
   return {
+    /** Shows the level pill; pass null to hide it (before a round starts). */
     setLevel(number) {
-      level.hidden = false;
+      level.hidden = number == null;
       level.textContent = `Level ${number}`;
     },
     setMeter(id, { label, value, max, text }) {

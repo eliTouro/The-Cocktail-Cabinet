@@ -1,6 +1,7 @@
 import { BALL, FIELD, LIFE_VALUE, LIVES, PADDLE, ROW_POINTS, STANDING_BRICK_VALUE, WALL, difficultyAt } from './config.js';
 
 const WALL_WIDTH = WALL.columns * WALL.brickWidth + (WALL.columns - 1) * WALL.gap;
+const WALL_BOTTOM = WALL.top + WALL.rows * (WALL.brickHeight + WALL.gap);
 const CENTER_X = FIELD.width / 2;
 
 const clamp = (value, low, high) => Math.min(Math.max(value, low), high);
@@ -25,6 +26,7 @@ export function createGame(modeId, startSeconds = 0) {
     wallVelocity: 0,
     bricks: createBricks(),
     ball: restingBall(paddle),
+    events: [],
   };
 }
 
@@ -55,6 +57,12 @@ export const bricksLeft = (state) => state.bricks.filter((brick) => brick.alive)
 // The wall keeps its full width as bounds even when bricks vanish, so the dodging range never changes.
 export const wallBounds = () => ({ min: WALL_WIDTH / 2, max: FIELD.width - WALL_WIDTH / 2 });
 
+/** True when the wall sits at the end of its rail and `direction` (-1 left, 1 right) pushes further. */
+export function pushesPastRail(wallX, direction) {
+  const { min, max } = wallBounds();
+  return (direction > 0 && wallX >= max) || (direction < 0 && wallX <= min);
+}
+
 const paddleBounds = (paddle) => ({ min: paddle.width / 2, max: FIELD.width - paddle.width / 2 });
 
 export const wallScore = (state) => state.livesLost * LIFE_VALUE + bricksLeft(state) * STANDING_BRICK_VALUE;
@@ -69,8 +77,13 @@ export function observe(state) {
   };
 }
 
-/** Advances the game by `dt` seconds. Mutates and returns `state`. */
+/**
+ * Advances the game by `dt` seconds. Mutates and returns `state`.
+ * `state.events` lists what happened during this step (launch, paddle, border, brick, lifeLost,
+ * won, lost) so the screen can play sounds without re-deriving the rules.
+ */
 export function step(state, input, dt) {
+  state.events = [];
   if (state.status === 'won' || state.status === 'lost') return state;
   const level = difficultyAt(state.modeId, state.time);
 
@@ -111,6 +124,7 @@ function launch(state, speed) {
   state.ball.vx = speed * Math.sin(angle);
   state.ball.vy = -speed * Math.cos(angle);
   state.status = 'playing';
+  state.events.push({ type: 'launch' });
 }
 
 function advanceBall(state, speed, dt) {
@@ -121,7 +135,7 @@ function advanceBall(state, speed, dt) {
     const { ball } = state;
     ball.x += ball.vx * subDt;
     ball.y += ball.vy * subDt;
-    bounceOffBorders(ball);
+    bounceOffBorders(ball, state.events);
     bouncePaddle(state, speed);
     bounceBricks(state, speed);
     if (ball.y - BALL.radius > FIELD.height) loseLife(state);
@@ -136,19 +150,24 @@ export function reshape(ball, speed) {
   ball.vx = (Math.sign(ball.vx) || 1) * Math.sqrt(speed * speed - vertical * vertical);
 }
 
-function bounceOffBorders(ball) {
+function bounceOffBorders(ball, events) {
   const { radius } = BALL;
+  let bounced = false;
   if (ball.x < radius) {
     ball.x = radius;
     ball.vx = Math.abs(ball.vx);
+    bounced = true;
   } else if (ball.x > FIELD.width - radius) {
     ball.x = FIELD.width - radius;
     ball.vx = -Math.abs(ball.vx);
+    bounced = true;
   }
   if (ball.y < radius) {
     ball.y = radius;
     ball.vy = Math.abs(ball.vy);
+    bounced = true;
   }
+  if (bounced) events.push({ type: 'border' });
 }
 
 function bouncePaddle(state, speed) {
@@ -165,6 +184,7 @@ function bouncePaddle(state, speed) {
   ball.vx = speed * Math.sin(angle);
   ball.vy = -speed * Math.cos(angle);
   reshape(ball, speed);
+  state.events.push({ type: 'paddle' });
 }
 
 /** Circle against rectangle. Returns the push-out normal and depth, or null when they do not touch. */
@@ -209,10 +229,15 @@ function bounceBricks(state, speed) {
 
   hit.brick.alive = false;
   state.score += ROW_POINTS[hit.brick.row];
-  if (bricksLeft(state) === 0) state.status = 'won';
+  state.events.push({ type: 'brick', row: hit.brick.row });
+  if (bricksLeft(state) === 0) {
+    state.status = 'won';
+    state.events.push({ type: 'won' });
+  }
 }
 
 function deepestBrickHit(state) {
+  if (state.ball.y - BALL.radius > WALL_BOTTOM) return null;
   let best = null;
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
@@ -225,8 +250,10 @@ function deepestBrickHit(state) {
 function loseLife(state) {
   state.lives -= 1;
   state.livesLost += 1;
+  state.events.push({ type: 'lifeLost' });
   if (state.lives <= 0) {
     state.status = 'lost';
+    state.events.push({ type: 'lost' });
     return;
   }
   state.status = 'serving';

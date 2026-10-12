@@ -51,17 +51,23 @@ export const WAVE_PAUSE = 1.5;
 /** Rock spawns (waves or sent rocks) need this much clear space around the ship. */
 export const SAFE_RADIUS = 140;
 
+/** The ship wins by outlasting this many seconds, in both modes. */
 export const SURVIVE_SECONDS = 90;
 
-const WAVE_RAMP_SECONDS = 360;
-const SKILL_RAMP_SECONDS = 60;
+/**
+ * Seconds of round clock for the difficulty to climb from level 1 to level 10. A round started
+ * at level N begins with the clock at `elapsedAtLevel(N, SECONDS_TO_HARDEST)`; it then keeps
+ * running, so a 90 s round that starts at level 1 still ends around level 7.
+ */
+export const SECONDS_TO_HARDEST = 120;
 
 const COMPUTER_TUNING = {
-  maxRocks: 9,
-  rockSpeed: 100,
+  maxRocks: 12,
+  rockSpeed: 120,
   rockLifetime: 14,
-  budgetCap: 6,
-  budgetRefill: 0.7,
+  budgetCap: 8,
+  startingBudget: 3,
+  budgetRefill: 0.85,
   sendCooldown: 0.5,
 };
 
@@ -70,32 +76,33 @@ const HUMAN_TUNING = {
   rockSpeed: 0,
   rockLifetime: Infinity,
   budgetCap: 0,
+  startingBudget: 0,
   budgetRefill: 0,
   sendCooldown: 0,
 };
 
-/** Rules knobs per mode. In computer mode these stay fixed; the AI's skill is what ramps. */
+/** Rules knobs per mode. They stay fixed; levels change the waves (human mode) or the pilot's skill (computer mode). */
 export const TUNING = {
   human: () => HUMAN_TUNING,
   computer: () => COMPUTER_TUNING,
 };
 
 /**
- * Human mode wave curve over six minutes: 2 -> 6 large rocks per wave, drifting 35 -> 80 px/s.
+ * Human mode wave curve over the level ramp: 3 -> 5 large rocks per wave, drifting 52 -> 72 px/s.
  * Early waves are slow and sparse enough to learn thrust and inertia; late ones demand real dodging.
  */
 export const WAVE = (seconds) => ({
-  count: Math.round(ramp(2, 6, WAVE_RAMP_SECONDS, seconds)),
-  speed: ramp(35, 80, WAVE_RAMP_SECONDS, seconds),
+  count: Math.round(ramp(3, 5, SECONDS_TO_HARDEST, seconds)),
+  speed: ramp(52, 72, SECONDS_TO_HARDEST, seconds),
 });
 
 /**
- * Computer pilot skill, ramped over 60 s of game time so the human faces a clumsy pilot first and
- * a sharp one late: it sees rocks 0.42 s late with 0.30 rad aim error, ending at 0.30 s and 0.20 rad.
+ * Computer pilot skill over the same level ramp: it sees rocks 0.9 s late with 0.3 rad aim
+ * error at level 1, ending at 0.25 s and 0.12 rad at level 10.
  */
 export const AI_SKILL = (seconds) => ({
-  reactionDelay: ramp(0.42, 0.3, SKILL_RAMP_SECONDS, seconds),
-  aimError: ramp(0.3, 0.2, SKILL_RAMP_SECONDS, seconds),
+  reactionDelay: ramp(0.9, 0.25, SECONDS_TO_HARDEST, seconds),
+  aimError: ramp(0.3, 0.12, SECONDS_TO_HARDEST, seconds),
 });
 
 export const AI_TUNING = {
@@ -108,7 +115,21 @@ export const AI_TUNING = {
   historySeconds: 1,
 };
 
-/** On-canvas controls for the human sender (computer mode). */
-export const SENDER_PANEL = { top: HEIGHT - 34, buttonWidth: 92, buttonGap: 8, left: 12 };
+/** On-canvas rock-size buttons for the human sender (computer mode): a column down the left edge. */
+export const SENDER_PANEL = {
+  left: 10, top: 154, buttonWidth: 124, buttonHeight: 52, buttonGap: 8,
+};
 export const SIZE_KEYS = ['Digit1', 'Digit2', 'Digit3'];
 export const NUMPAD_SIZE_KEYS = ['Numpad1', 'Numpad2', 'Numpad3'];
+
+/** Round on-canvas buttons that stand in for the keyboard on touch screens (human mode). */
+export const TOUCH_PAD = {
+  radius: 38,
+  y: HEIGHT * 0.6,
+  buttons: [
+    { id: 'left', x: 54, glyph: '◀' },
+    { id: 'right', x: 140, glyph: '▶' },
+    { id: 'thrust', x: WIDTH - 140, glyph: '▲' },
+    { id: 'fire', x: WIDTH - 54, glyph: '●' },
+  ],
+};

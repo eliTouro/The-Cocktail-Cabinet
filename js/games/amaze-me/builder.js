@@ -3,6 +3,36 @@ import { edit, findRoute, partsLeft } from './maze.js';
 export const TOOLS = ['wall', 'arrow', 'portal', 'erase'];
 
 /**
+ * The cells on the straight line from one cell to another, excluding the first. A fast mouse
+ * stroke reports only a few pointer positions, so without this a quick drag leaves gaps.
+ */
+export function cellsBetween(from, to, cols) {
+  const cells = [];
+  let x = from % cols;
+  let y = Math.floor(from / cols);
+  const endX = to % cols;
+  const endY = Math.floor(to / cols);
+  const stepX = Math.sign(endX - x);
+  const stepY = Math.sign(endY - y);
+  const spanX = Math.abs(endX - x);
+  const spanY = Math.abs(endY - y);
+  let error = spanX - spanY;
+  while (x !== endX || y !== endY) {
+    const doubled = error * 2;
+    if (doubled > -spanY) {
+      error -= spanY;
+      x += stepX;
+    }
+    if (doubled < spanX) {
+      error += spanX;
+      y += stepY;
+    }
+    cells.push(y * cols + x);
+  }
+  return cells;
+}
+
+/**
  * The builder's side of the board, without any screen: which tool is selected and what a press,
  * a drag and a release do to the maze. Every change goes through `edit`, so the maze it holds
  * is always fair.
@@ -36,12 +66,26 @@ export function createBuilder({ maze, limits }) {
   }
 
   const nothing = { changed: false, erased: false, refusal: null };
+
+  /** Applies a painting stroke to every cell from where the pointer last was to `at`. */
+  function strokeTo(at, actionFor) {
+    const cells = cellsBetween(drag.last, at, current.cols);
+    drag.last = at;
+    return cells.reduce((total, cell) => {
+      const result = apply(actionFor(cell));
+      return {
+        changed: total.changed || result.changed,
+        erased: total.erased || result.erased,
+        refusal: total.refusal ?? result.refusal,
+      };
+    }, nothing);
+  }
   const isEnd = (at) => at === current.start || at === current.exit;
 
   const pressByTool = {
     wall(at) {
       const cell = current.cells[at] === 'wall' ? 'floor' : 'wall';
-      drag = { kind: 'paint', cell };
+      drag = { kind: 'paint', cell, last: at };
       return apply({ type: 'paint', at, cell });
     },
     arrow(at) {
@@ -53,7 +97,7 @@ export function createBuilder({ maze, limits }) {
       return apply({ type: 'paint', at, cell: 'portal' });
     },
     erase(at) {
-      drag = { kind: 'erase' };
+      drag = { kind: 'erase', last: at };
       return apply({ type: 'erase', at });
     },
   };
@@ -80,8 +124,8 @@ export function createBuilder({ maze, limits }) {
 
     drag(at) {
       if (drag?.kind === 'move') drag.at = at;
-      if (drag?.kind === 'paint') return apply({ type: 'paint', at, cell: drag.cell });
-      if (drag?.kind === 'erase') return apply({ type: 'erase', at });
+      if (drag?.kind === 'paint') return strokeTo(at, (cell) => ({ type: 'paint', at: cell, cell: drag.cell }));
+      if (drag?.kind === 'erase') return strokeTo(at, (cell) => ({ type: 'erase', at: cell }));
       return nothing;
     },
 

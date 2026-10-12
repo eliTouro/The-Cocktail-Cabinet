@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { DNF_BONUS_SECONDS, FLARE, GRID, PART_LIMITS, SIGHT_RADIUS, SOLVE_SECONDS } from '../js/games/amaze-me/config.js';
-import { createBuilder } from '../js/games/amaze-me/builder.js';
+import { cellsBetween, createBuilder } from '../js/games/amaze-me/builder.js';
 import {
   countParts, createMaze, edit, findRoute, lockIn, partsLeft, step, validate,
 } from '../js/games/amaze-me/maze.js';
@@ -360,4 +360,14 @@ test('the arrow tool places and then turns an arrow, and the portal tool places 
   builder.tap(cellAt(2, 6));
   builder.tap(cellAt(8, 6));
   assert.equal(builder.tap(cellAt(5, 6)).refusal.reason, 'limit-portal');
+});
+
+test('a fast drag leaves no gaps: every cell on the line is painted', () => {
+  assert.deepEqual(cellsBetween(0, 3, 12), [1, 2, 3]);
+  assert.deepEqual(cellsBetween(3, 3, 12), []);
+  const builder = createBuilder({ maze: createMaze(GRID), limits: PART_LIMITS });
+  const topRowStart = 1;
+  builder.press(topRowStart);
+  builder.drag(topRowStart + 5);
+  for (let at = topRowStart; at <= topRowStart + 5; at += 1) assert.equal(builder.maze().cells[at], 'wall');
 });

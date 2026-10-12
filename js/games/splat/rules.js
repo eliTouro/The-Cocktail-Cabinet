@@ -1,16 +1,31 @@
 import {
-  CLIMB_SAFETY, COLUMN_WIDTH, CREATURE_RADIUS, CREATURE_X, FLAP_COOLDOWN, FLAP_VELOCITY,
+  CLAMP_NOTICE_PIXELS, CLIMB_SAFETY, COLUMN_WIDTH, CREATURE_RADIUS, CREATURE_X, FLAP_COOLDOWN, FLAP_VELOCITY,
   FLOOR_Y, GAP_MARGIN, GRAVITY, HOVER_Y, MIN_SPACING, SPAWN_X, SPEED_MAX, WIDTH,
 } from './config.js';
 
 export const PHASE = { playing: 'playing', splat: 'splat', survived: 'survived' };
 export const SPLAT_CAUSE = { column: 'column', floor: 'floor', ceiling: 'ceiling' };
 
-/** `goal` is the number of columns the creature must pass to win, or null for an endless run. */
-export function createState({ goal = null } = {}) {
+export const EVENT = {
+  flap: 'flap',
+  placed: 'placed',
+  refused: 'refused',
+  passed: 'passed',
+  splat: 'splat',
+  survived: 'survived',
+};
+export const REFUSAL = { spacing: 'spacing', budget: 'budget' };
+
+/**
+ * `goal` is the number of columns the creature must pass to win, or null for an endless run.
+ * `startTime` seeds the clock that every difficulty curve reads, so a round can begin at a later level.
+ * `events` lists what happened during the latest step, for sound and on-screen messages.
+ */
+export function createState({ goal = null, startTime = 0 } = {}) {
   return {
     phase: PHASE.playing,
-    time: 0,
+    time: startTime,
+    events: [],
     creature: { x: CREATURE_X, y: HOVER_Y, vy: 0, flapCooldown: 0 },
     columns: [],
     nextColumnId: 1,
@@ -62,11 +77,20 @@ export function clampCenter(state, requested, gapSize) {
   return clamp(requested, low, high);
 }
 
-export function canPlaceColumn(state) {
-  if (state.phase !== PHASE.playing) return false;
-  if (state.goal !== null && state.columnsPlaced >= state.goal) return false;
+/** Why no column can be placed right now: the previous one is too close, or the budget is spent. Null if one can. */
+export function placementBlock(state) {
+  if (state.phase !== PHASE.playing) return REFUSAL.budget;
+  if (state.goal !== null && state.columnsPlaced >= state.goal) return REFUSAL.budget;
   const previous = lastColumn(state);
-  return !previous || SPAWN_X - previous.x >= MIN_SPACING;
+  return !previous || SPAWN_X - previous.x >= MIN_SPACING ? null : REFUSAL.spacing;
+}
+
+export const canPlaceColumn = (state) => placementBlock(state) === null;
+
+/** How far the previous column has travelled towards the next allowed spot: 0 just placed, 1 ready. */
+export function spacingProgress(state) {
+  const previous = lastColumn(state);
+  return previous ? Math.min((SPAWN_X - previous.x) / MIN_SPACING, 1) : 1;
 }
 
 /** Adds a column at the right edge with its gap clamped to a passable position. Returns whether it was added. */
@@ -84,10 +108,24 @@ export function placeColumn(state, requestedCenter, gapSize) {
   return true;
 }
 
-function applyFlap(creature) {
+function applyFlap(state) {
+  const { creature } = state;
   if (creature.flapCooldown > 0) return;
   creature.vy = FLAP_VELOCITY;
   creature.flapCooldown = FLAP_COOLDOWN;
+  state.events.push({ type: EVENT.flap });
+}
+
+function requestColumn(state, requestedCenter, gapSize) {
+  const block = placementBlock(state);
+  if (block) {
+    state.events.push({ type: EVENT.refused, reason: block });
+    return;
+  }
+  placeColumn(state, requestedCenter, gapSize);
+  const placed = lastColumn(state);
+  const clamped = Math.abs(placed.gapCenter - requestedCenter) > CLAMP_NOTICE_PIXELS;
+  state.events.push({ type: EVENT.placed, clamped });
 }
 
 function moveCreature(creature, dt) {
@@ -128,6 +166,7 @@ function scorePassedColumns(state) {
     if (!column.passed && column.x + COLUMN_WIDTH < state.creature.x) {
       column.passed = true;
       state.score += 1;
+      state.events.push({ type: EVENT.passed });
     }
   }
 }
@@ -137,9 +176,10 @@ function scorePassedColumns(state) {
  * centre or null; `tuning` is { speed, gapSize }. Human and computer controllers both go through here.
  */
 export function step(state, input, dt, tuning) {
+  state.events = [];
   if (state.phase !== PHASE.playing) return;
-  if (input.flap) applyFlap(state.creature);
-  if (input.column !== null && input.column !== undefined) placeColumn(state, input.column, tuning.gapSize);
+  if (input.flap) applyFlap(state);
+  if (input.column !== null && input.column !== undefined) requestColumn(state, input.column, tuning.gapSize);
 
   moveCreature(state.creature, dt);
   scrollColumns(state, tuning.speed, dt);
@@ -149,10 +189,14 @@ export function step(state, input, dt, tuning) {
   if (cause) {
     state.phase = PHASE.splat;
     state.splat = { x: state.creature.x, y: state.creature.y, cause };
+    state.events.push({ type: EVENT.splat, cause });
     return;
   }
   scorePassedColumns(state);
-  if (state.goal !== null && state.score >= state.goal) state.phase = PHASE.survived;
+  if (state.goal !== null && state.score >= state.goal) {
+    state.phase = PHASE.survived;
+    state.events.push({ type: EVENT.survived });
+  }
 }
 
 /** What a player can see on screen: the creature and the columns that are on screen and not yet behind it. */

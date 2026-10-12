@@ -1,7 +1,9 @@
 import {
   BASE_KEYS, FIRST_WAVE_DELAY, GROUND_Y, NUMPAD_BASE_KEYS, WAVE, WAVE_LAYOUT, WAVE_PAUSE, WIDTH,
 } from './config.js';
-import { groundTarget, interceptorRequest, warheadRequest } from './rules.js';
+import {
+  difficultyClock, groundTarget, interceptorRequest, warheadRequest,
+} from './rules.js';
 
 const NO_INPUT = { launches: [], startWave: 0 };
 /** How far sideways from the target a sent warhead may start, so attacks come in at varied angles. */
@@ -70,7 +72,7 @@ export function createWaveGenerator(rng) {
   }
 
   function planWave(state) {
-    const params = WAVE(state.time);
+    const params = WAVE(difficultyClock(state));
     const span = params.count * WAVE_LAYOUT.launchSecondsPerWarhead;
     schedule = Array.from({ length: params.count }, () => ({
       at: state.time + rng.range(0, span),

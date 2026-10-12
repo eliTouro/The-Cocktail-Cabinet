@@ -1,4 +1,6 @@
-import { GROUND_Y, HEIGHT, IMPACT_FLASH_SECONDS, IMPACT_RADIUS, WIDTH } from './config.js';
+import {
+  BLAST, GROUND_Y, HEIGHT, IMPACT_FLASH_SECONDS, IMPACT_RADIUS, WIDTH,
+} from './config.js';
 import { blastRadius } from './rules.js';
 
 const INK = '#0e0b15';
@@ -16,6 +18,11 @@ const BASE_HALF_WIDTH = 17;
 const AMMO_PIP = { size: 3, gap: 2, perRow: 5 };
 const TARGET_MARK = 4;
 const RUBBLE_HEIGHT = 3;
+const CROSSHAIR_RADIUS = 9;
+const REACH_DASH = [4, 4];
+const LANDING_MARK_HEIGHT = 10;
+const LABEL_FONT = '12px system-ui, sans-serif';
+const LABEL_GAP = 8;
 
 function withGlow(context, color, draw) {
   context.save();
@@ -158,7 +165,7 @@ function drawImpact(context, impact, color) {
 
 function drawCrosshair(context, preview, color) {
   const { x, y } = preview.position;
-  const radius = 9;
+  const radius = CROSSHAIR_RADIUS;
   context.save();
   context.strokeStyle = color;
   context.globalAlpha = preview.canFire ? 1 : 0.4;
@@ -173,13 +180,41 @@ function drawCrosshair(context, preview, color) {
   context.restore();
 }
 
-function drawBudgetBar(context, preview, color) {
-  const width = 120;
-  const x = WIDTH - width - 14;
-  context.fillStyle = 'rgba(255,255,255,0.1)';
-  context.fillRect(x, 12, width, 6);
+/** Shows how far a counter-missile's blast will reach where it bursts. */
+function drawBlastReach(context, preview, color) {
+  context.save();
+  context.strokeStyle = color;
+  context.globalAlpha = preview.canFire ? 0.35 : 0.15;
+  context.setLineDash(REACH_DASH);
+  context.beginPath();
+  context.arc(preview.position.x, preview.position.y, BLAST.maxRadius, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
+/** Marks the spot on the ground a warhead sent from this pointer position would hit. */
+function drawLandingMark(context, preview, color) {
+  const x = Math.min(Math.max(preview.position.x, 0), WIDTH);
+  context.save();
+  context.strokeStyle = color;
+  context.globalAlpha = preview.canFire ? 0.8 : 0.3;
+  context.lineWidth = 1.4;
+  context.beginPath();
+  context.moveTo(x - IMPACT_RADIUS, GROUND_Y);
+  context.lineTo(x, GROUND_Y - LANDING_MARK_HEIGHT);
+  context.lineTo(x + IMPACT_RADIUS, GROUND_Y);
+  context.stroke();
+  context.restore();
+}
+
+function drawRefusalLabel(context, preview, color) {
+  if (preview.canFire || !preview.refusalLabel) return;
+  context.save();
   context.fillStyle = color;
-  context.fillRect(x, 12, width * (preview.budget / preview.budgetCap), 6);
+  context.font = LABEL_FONT;
+  context.textAlign = 'center';
+  context.fillText(preview.refusalLabel, preview.position.x, preview.position.y - CROSSHAIR_RADIUS - LABEL_GAP);
+  context.restore();
 }
 
 /** Draws one frame. `colors` says whose hand each thing is: defender (cities, bases, blasts) and attacker (warheads). */
@@ -195,6 +230,9 @@ export function render(context, { state, preview, colors }) {
   });
   state.blasts.forEach((blast) => drawBlast(context, blast, colors.defender));
   state.impacts.forEach((impact) => drawImpact(context, impact, colors.attacker));
-  if (preview) drawCrosshair(context, preview, colors.crosshair);
-  if (preview?.budgetCap) drawBudgetBar(context, preview, colors.attacker);
+  if (!preview) return;
+  if (preview.showsReach) drawBlastReach(context, preview, colors.crosshair);
+  else drawLandingMark(context, preview, colors.crosshair);
+  drawCrosshair(context, preview, colors.crosshair);
+  drawRefusalLabel(context, preview, colors.crosshair);
 }

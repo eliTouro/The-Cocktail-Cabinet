@@ -4,6 +4,18 @@ import {
 } from './config.js';
 
 export const PHASE = { playing: 'playing', citiesLost: 'cities-lost', survived: 'survived' };
+/** What happened during a step, for the screen to turn into sounds and hints. */
+export const EVENT = {
+  interceptorFired: 'interceptor-fired',
+  warheadLaunched: 'warhead-launched',
+  refused: 'refused',
+  detonation: 'detonation',
+  warheadDestroyed: 'warhead-destroyed',
+  cityDestroyed: 'city-destroyed',
+  baseDestroyed: 'base-destroyed',
+  waveStarted: 'wave-started',
+  waveCleared: 'wave-cleared',
+};
 export const REJECTION = {
   cooldown: 'cooldown',
   noAmmo: 'no-ammo',
@@ -24,9 +36,15 @@ export function interceptorRequest(target, baseIndex) {
   return { kind: 'interceptor', target, baseIndex };
 }
 
-export function createState(tuning, { surviveSeconds = null } = {}) {
+/**
+ * `surviveSeconds` is how long the cities must hold to win; null means the round only ends by losing.
+ * `startElapsed` is where the difficulty clock stands at the start of the round (see `difficultyClock`).
+ */
+export function createState(tuning, { surviveSeconds = null, startElapsed = 0 } = {}) {
   return {
     time: 0,
+    startElapsed,
+    events: [],
     phase: PHASE.playing,
     surviveSeconds,
     bases: BASE_XS.map((x) => ({ x, alive: true, ammo: tuning.ammoPerBase, cooldown: 0 })),
@@ -45,15 +63,20 @@ export function createState(tuning, { surviveSeconds = null } = {}) {
     warheadsSent: 0,
     budget: tuning.startBudget,
     launchCooldown: 0,
+    fireCooldown: 0,
     ammoRefillProgress: 0,
   };
 }
+
+/** Seconds on the difficulty ramp: the round's own time plus the head start the chosen level gives. */
+export const difficultyClock = (state) => state.startElapsed + state.time;
 
 /** What a defender may see: positions, velocities, bases (ammo, cooldown), cities and blasts, but no bookkeeping. */
 export function observe(state) {
   return {
     time: state.time,
-    launchCooldown: state.launchCooldown,
+    elapsed: difficultyClock(state),
+    fireCooldown: state.fireCooldown,
     bases: state.bases.map(({ x, alive, ammo, cooldown }) => ({ x, alive, ammo, cooldown })),
     cities: state.cities.map(({ x, alive }) => ({ x, alive })),
     warheads: state.warheads.map(({ id, x, y, vx, vy }) => ({ id, x, y, vx, vy })),
@@ -97,27 +120,32 @@ function interceptorRejection(state, baseIndex) {
   return hasAmmo ? REJECTION.cooldown : REJECTION.noAmmo;
 }
 
-function clampTarget(target) {
+/** Where an interceptor aimed at `target` will really burst: inside the sky, above the base line. */
+export function clampTarget(target) {
   return { x: Math.min(Math.max(target.x, 0), WIDTH), y: Math.min(Math.max(target.y, 0), GROUND_Y - MIN_TARGET_CLEARANCE) };
 }
 
 /** Why an interceptor request would be refused right now, or null if it would fire. */
 export function interceptorRejectionFor(state, request) {
-  if (state.launchCooldown > 0) return REJECTION.cooldown;
+  if (state.fireCooldown > 0) return REJECTION.cooldown;
   return nearestUsableBase(state, request.target, request.baseIndex) ? null : interceptorRejection(state, request.baseIndex);
+}
+
+function refuse(state, kind, reason) {
+  state.events.push({ type: EVENT.refused, kind, reason });
 }
 
 function fireInterceptor(state, request, tuning) {
   const rejection = interceptorRejectionFor(state, request);
-  if (rejection) return rejection;
+  if (rejection) return refuse(state, 'interceptor', rejection);
   const target = clampTarget(request.target);
   const base = nearestUsableBase(state, target, request.baseIndex);
   base.ammo -= 1;
   base.cooldown = tuning.baseCooldown;
-  state.launchCooldown = tuning.launchCooldown;
+  state.fireCooldown = tuning.fireCooldown;
   const origin = { x: base.x, y: GROUND_Y };
   state.interceptors.push(createFlyer(state, origin, target, INTERCEPTOR.speed, {}));
-  return null;
+  state.events.push({ type: EVENT.interceptorFired });
 }
 
 /** Why a warhead request would be refused right now, or null if it would launch. */
@@ -131,10 +159,11 @@ export function warheadRejectionFor(state, request, tuning) {
 
 function launchWarhead(state, request, tuning) {
   const rejection = warheadRejectionFor(state, request, tuning);
-  if (rejection) return rejection;
+  if (rejection) return refuse(state, 'warhead', rejection);
   if (!request.free) {
     state.budget -= 1;
     state.launchCooldown = tuning.launchCooldown;
+    state.events.push({ type: EVENT.warheadLaunched });
   } else if (state.unlaunched > 0) {
     state.unlaunched -= 1;
   }
@@ -142,7 +171,6 @@ function launchWarhead(state, request, tuning) {
     splitAt: request.splitAt ?? null, children: request.children ?? [],
   }));
   state.warheadsSent += 1;
-  return null;
 }
 
 function applyLaunches(state, launches, tuning) {
@@ -154,6 +182,7 @@ function applyLaunches(state, launches, tuning) {
 
 function tickClocks(state, dt, tuning) {
   state.launchCooldown = Math.max(0, state.launchCooldown - dt);
+  state.fireCooldown = Math.max(0, state.fireCooldown - dt);
   state.bases.forEach((base) => { base.cooldown = Math.max(0, base.cooldown - dt); });
   state.budget = Math.min(tuning.budgetCap, state.budget + tuning.budgetRefill * dt);
   state.ammoRefillProgress += tuning.ammoRefillPerSecond * dt;
@@ -186,7 +215,10 @@ export function createBlast(state, x, y, spec) {
 function flyInterceptors(state, dt) {
   state.interceptors = state.interceptors.filter((interceptor) => {
     const arrived = advance(interceptor, dt);
-    if (arrived) createBlast(state, interceptor.tx, interceptor.ty, BLAST);
+    if (arrived) {
+      createBlast(state, interceptor.tx, interceptor.ty, BLAST);
+      state.events.push({ type: EVENT.detonation });
+    }
     return !arrived;
   });
 }
@@ -204,7 +236,9 @@ function strikeGround(state, warhead) {
   [...state.cities, ...state.bases].forEach((structure) => {
     if (structure.alive && Math.abs(structure.x - warhead.x) <= IMPACT_RADIUS) {
       structure.alive = false;
-      if ('ammo' in structure) structure.ammo = 0;
+      const isBase = 'ammo' in structure;
+      if (isBase) structure.ammo = 0;
+      state.events.push({ type: isBase ? EVENT.baseDestroyed : EVENT.cityDestroyed });
     }
   });
 }
@@ -235,6 +269,7 @@ function destroyWarheadsInBlasts(state) {
     else {
       state.warheadsDestroyed += 1;
       state.score += WARHEAD_POINTS;
+      state.events.push({ type: EVENT.warheadDestroyed });
       createBlast(state, warhead.x, warhead.y, CHAIN_BLAST);
     }
   });
@@ -254,6 +289,7 @@ function settleWave(state, tuning) {
   state.score += state.lastWaveBonus;
   state.bases.forEach((base) => { if (base.alive) base.ammo = tuning.ammoPerBase; });
   state.waveActive = false;
+  state.events.push({ type: EVENT.waveCleared, bonus: state.lastWaveBonus });
 }
 
 function updatePhase(state) {
@@ -264,14 +300,17 @@ function updatePhase(state) {
 /**
  * One fixed step. `input` is { launches, startWave }: launches are interceptor or warhead requests
  * from whoever is playing, startWave (classic mode only) is how many warheads the new wave will send.
+ * `state.events` is replaced each step with what happened in it.
  */
 export function step(state, input, dt, tuning) {
   if (state.phase !== PHASE.playing) return;
   state.time += dt;
+  state.events = [];
   if (input.startWave) {
     state.wave += 1;
     state.waveActive = true;
     state.unlaunched = input.startWave;
+    state.events.push({ type: EVENT.waveStarted });
   }
   tickClocks(state, dt, tuning);
   applyLaunches(state, input.launches, tuning);

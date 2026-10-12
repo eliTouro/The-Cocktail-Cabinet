@@ -42,7 +42,7 @@ export const GAMES = [
     name: 'Splat',
     tagline: 'Squeeze through the gaps between columns.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Fly through', label: 'Fly through the columns', blurb: 'Find the gap in every column and keep moving.' },
+      { id: 'human', tone: 'human', short: 'Fly through', label: 'Fly through the columns', blurb: 'Find the gap in every column. Pass 30 columns without a splat to win.' },
       { id: 'computer', tone: 'computer', short: 'Lay columns', label: 'Lay the columns', blurb: 'You build the course and the computer flies. Make it splat within 20 columns.' },
     ],
     load: () => import('./games/splat.js'),

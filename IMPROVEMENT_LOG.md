@@ -97,7 +97,7 @@ and aMaze Me is two people on one screen.
 - Balance retuned: fewer guesses early (10 instead of 12), and the computer gets 7 guesses early and 6 late when you make the code.
 
 ### aMaze Me (new, game eight)
-- Two people on one screen: one builds a maze in 75 seconds, hands over, and the other runs it through fog in 90 seconds; then they swap. The maze that holds its runner longest wins.
+- Two people on one screen: one builds a maze in 90 seconds, hands over, and the other runs it through fog in 90 seconds; then they swap. The maze that holds its runner longest wins.
 - The editor refuses any edit that would seal the exit or trap the runner, so every maze is fair.
 - Walls, one-way arrows and portals; two flares light a wide area. Mouse, touch, keyboard and an on-screen D-pad.
 - Fast mouse drags fill in every cell they cross, so walls have no gaps.

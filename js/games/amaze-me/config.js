@@ -2,7 +2,7 @@
 
 export const GRID = { cols: 12, rows: 9 };
 
-export const BUILD_SECONDS = 75;
+export const BUILD_SECONDS = 90;
 export const SOLVE_SECONDS = 90;
 /** A maze nobody escapes counts as a full run plus this bonus, so a perfect trap beats a fast escape. */
 export const DNF_BONUS_SECONDS = 30;

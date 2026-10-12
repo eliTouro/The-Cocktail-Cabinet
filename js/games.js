@@ -93,7 +93,7 @@ export const GAMES = [
     name: 'aMaze Me',
     tagline: 'Design a maze, hand it over, and watch a friend get lost in it.',
     modes: [
-      { id: 'duel', tone: 'versus', short: '2 players', label: 'Two players, one screen', blurb: 'Take turns on one screen: one of you builds a maze in 75 seconds, the other runs it in the fog. Then swap. The maze that holds its runner longest wins.' },
+      { id: 'duel', tone: 'versus', short: '2 players', label: 'Two players, one screen', blurb: 'Take turns on one screen: one of you builds a maze in 90 seconds, the other runs it in the fog. Then swap. The maze that holds its runner longest wins.' },
     ],
     load: () => import('./games/amaze-me.js'),
   },

@@ -63,7 +63,7 @@ export const GAMES = [
     name: 'Missile Command',
     tagline: 'Defend the cities from incoming warheads.',
     modes: [
-      { id: 'human', tone: 'human', short: 'Defend', label: 'Defend the cities', blurb: 'Click to fire counter-missiles from three bases and stop every warhead falling on your six cities.' },
+      { id: 'human', tone: 'human', short: 'Defend', label: 'Defend the cities', blurb: 'Click to fire counter-missiles from three bases and keep a city standing for 80 seconds.' },
       { id: 'computer', tone: 'computer', short: 'Send warheads', label: 'Launch the attack', blurb: 'The computer defends. Send warheads with a refilling budget and destroy all 6 cities before it survives 80 seconds.' },
     ],
     load: () => import('./games/missile-command.js'),

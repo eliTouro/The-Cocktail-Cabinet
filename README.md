@@ -24,21 +24,22 @@ python3 -m http.server 8000      # then open http://localhost:8000
 | `js/games.js` | Registry of the eight games and the game contract |
 | `js/dom.js` | Tiny `h()` helper for building DOM elements |
 | `js/icons.js` | Geometric pictogram per game |
-| `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay |
+| `js/core/` | Shared game kit: fixed-step loop, canvas, keyboard/pointer input, difficulty ramp, seeded RNG, start/game-over overlay with level picker, `sound.js` (synthesised effects, mute), `level.js` (ten levels, `?level=N`), `hud.js` (goal, controls, level and resource meters) |
 | `js/games/<id>.js` | One module per game, with helpers in `js/games/<id>/` (`rules.js` pure rules, AI/controller, `render.js`, `config.js` difficulty numbers). Mastermind is the seventh game; until built, any game without real code shows a placeholder. Imitation, Mastermind and aMaze Me also have their own `css/<id>.css` |
 | `tests/*.test.js` | Unit tests for pure logic, run with `npm test` (Node's built-in runner, no dependencies) |
 | `js/games/placeholder.js` | "Coming soon" panel used until a game is built |
 | `DELEGATION_LOG.md` | Record of what Claude was asked to do and how it was verified |
+| `IMPROVEMENT_LOG.md` | The improvements made after the first submission (sound, levels, clearer screens, balance tests, aMaze Me) |
 
 ## Games and their flips
 
 | Game | You play | Flipped: the computer plays the classic role, you take the other side |
 | --- | --- | --- |
-| Snake | Steer the snake | You place apples (reachable cells, max 3 on board, cooldown) to make the computer-steered snake crash before it reaches length 40 |
+| Snake | Steer the snake | You place apples (reachable cells, max 3 on board, cooldown) to make the computer-steered snake crash before it reaches length 24. Steering wins by eating 30 apples |
 | Breakout | Paddle vs a 5x10 wall, 3 lives | You slide the wall to throw off the computer's paddle; win by making it lose 3 lives |
-| Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns |
-| Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon) | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
-| Missile Command | Defend 6 cities from 3 bases | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
+| Splat | Flap through columns | You lay out the columns (clamped so each is always passable); win by making the computer-flown creature splat within 20 columns. Flying wins by passing 30 columns |
+| Asteroids | Fly the ship and shoot polygon rocks (triangle, square, hexagon); survive 90 s with 3 lives | You send rocks from the edges on a refilling budget; destroy the computer pilot's 3 lives before it survives 90 s |
+| Missile Command | Defend 6 cities from 3 bases; keep a city standing for 80 s | You launch warheads on a refilling budget; destroy all 6 cities before the computer defender survives 80 s |
 | Imitation | Be the judge: question a friend and call whether they are human or an AI | Be the deceiver: each round, answer yourself or let an in-browser AI (Llama-3.2-1B via WebLLM, scripted fallback) answer for you. Two browsers, direct WebRTC with a copy-paste invite link, no relay. Right call +1 judge, wrong +1 deceiver, unlimited rounds, score kept |
 | Mastermind | Break the code: crack the computer's hidden colour code from red and white pegs | Make the code: hide one and the computer cracks it from the pegs alone (same scoring and guess limit, never sees your secret); stump it to level up. A run of 10+ levels with more pegs and colours and a smarter computer |
 | aMaze Me | Two players, one screen: one builds a maze in 75 s (the editor refuses any edit that would seal the Exit or trap the runner), the other runs it in fog of war in 90 s (sight radius about 2 squares, glowing Exit, 2 flares), then swap; the maze that held its runner longest wins (a maze nobody escapes scores 120). Walls, one-way arrows and a portal pair. No computer side, by design | None: the "flip" is swapping roles with your friend |
@@ -46,6 +47,10 @@ python3 -m http.server 8000      # then open http://localhost:8000
 In every game except Imitation (a chat between two people) and aMaze Me (two people, one screen, no computer side) the computer uses the same rules, collisions and speed limits as a human, sees only
 what a human could see, and its skill ramps up over time so the human's challenge grows gradually.
 Tests simulate full AI games (`npm test`).
+
+## Sound, levels and balance
+
+Every game has sound (a speaker button mutes it; nothing is downloaded, the effects are synthesised), a start-at-level control (ten levels; add `?level=8` to a game's address to jump), and an on-screen goal, controls and meters for anything the player waits on. Each game has a computer-versus-computer balance test (`tests/<game>Balance.test.js`) that checks both sides are winnable at levels 1, 5 and 10. Details and results are in `IMPROVEMENT_LOG.md`.
 
 ## Adding a game
 

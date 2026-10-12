@@ -1,0 +1,279 @@
+/* aMaze Me. Loaded when the game mounts and removed when it is destroyed.
+   --tone is magenta (two players on one screen). The --am-* colours below are also read by the
+   canvas in js/games/amaze-me/render.js, so each colour is defined once, here. */
+
+.stage.am-stage {
+  display: block;
+  --am-floor: #161126;
+  --am-dot: rgba(255, 255, 255, 0.14);
+  --am-wall: #8a6bff;
+  --am-arrow: #ff5fa2;
+  --am-portal: #b8ff5c;
+  --am-start: #ffb347;
+  --am-exit: #52d6ff;
+  --am-runner: #fff7e6;
+  --am-danger: #ff4d5e;
+  --am-fog: #05040a;
+  --am-route: rgba(255, 255, 255, 0.3);
+  background:
+    radial-gradient(34rem 18rem at 50% -4%, rgba(255, 95, 162, 0.16), transparent 70%),
+    radial-gradient(30rem 20rem at 100% 100%, rgba(138, 107, 255, 0.14), transparent 70%),
+    var(--surface);
+}
+
+.am-card[hidden], .am-play[hidden], .am-panel[hidden], .am-countdown[hidden] { display: none; }
+
+/* ---------- Cards (title, hand-overs, final) ---------- */
+
+.am-card {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  overflow-y: auto;
+  text-align: center;
+}
+
+.am-card__title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+}
+
+.am-card__title b {
+  color: var(--tone);
+  text-shadow: 0 0 28px var(--tone);
+}
+
+.am-card__lede, .am-card__detail { max-width: 32rem; color: var(--muted); }
+.am-card__tally { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--tone); }
+
+.am-steps {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 36rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  text-align: left;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.am-steps li {
+  position: relative;
+  padding-left: 2.5rem;
+  counter-increment: step;
+}
+
+.am-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0.1rem;
+  display: grid;
+  place-items: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 50%;
+  background: var(--tone-soft);
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.am-steps b { color: var(--text); }
+
+.am-rows { display: grid; gap: var(--space-1); font-family: var(--font-mono); font-size: 0.9375rem; }
+
+.am-names { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); width: min(100%, 26rem); }
+.am-field { display: grid; gap: var(--space-1); text-align: left; }
+.am-field__label { font-family: var(--font-mono); font-size: 0.6875rem; color: var(--muted); }
+
+.am-field__input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink);
+  color: var(--text);
+  font: inherit;
+}
+
+.am-field__input:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+
+.am-card__buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+
+/* ---------- Buttons ---------- */
+
+.am-button {
+  min-height: 2.75rem;
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-spring), border-color 0.2s;
+}
+
+.am-button--primary {
+  border-color: transparent;
+  background: var(--tone);
+  color: var(--ink);
+  box-shadow: 0 10px 24px -12px var(--tone);
+}
+
+.am-button:hover { transform: translateY(-2px); border-color: var(--tone); }
+.am-button:active { transform: scale(0.96); }
+.am-button:focus-visible, .am-tool:focus-visible, .am-pad__button:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+/* ---------- Play layout ---------- */
+
+.am-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.am-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-right: 3rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+.am-who { color: var(--tone); }
+
+.am-timer { display: flex; align-items: center; gap: var(--space-2); color: var(--muted); }
+.am-timer__track { width: 6rem; height: 0.5rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.am-timer__fill { display: block; height: 100%; background: var(--tone); transform-origin: left; }
+.am-timer__time { min-width: 3ch; color: var(--text); }
+.am-timer[data-urgent] .am-timer__fill { background: var(--am-danger); }
+.am-timer[data-urgent] .am-timer__time { color: var(--am-danger); animation: am-pulse 1s steps(2, jump-none) infinite; }
+
+@keyframes am-pulse { 50% { opacity: 0.45; } }
+
+/* The canvas is the largest 4:3 box that fits the board area, whatever shape that area is. */
+.am-board { position: relative; min-height: 0; display: grid; place-items: center; container-type: size; }
+
+.am-canvas {
+  width: min(100cqw, 133.33cqh);
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-raised);
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.am-canvas:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+
+.am-countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(3rem, 14vw, 7rem);
+  letter-spacing: -0.03em;
+  color: var(--am-runner);
+  text-shadow: 0 0 36px var(--tone), 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.am-countdown[data-pop] { animation: am-pop 0.5s var(--ease-spring); }
+
+@keyframes am-pop { from { transform: scale(0.6); opacity: 0; } }
+
+.am-status, .am-help { margin: 0; text-align: center; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1.4; }
+.am-status { color: var(--text); }
+.am-status[data-alert] { color: var(--am-danger); }
+.am-help { color: var(--muted); }
+.am-help:empty { display: none; }
+
+.am-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-3); }
+
+.am-tools { display: grid; grid-template-columns: repeat(4, auto); gap: var(--space-2); }
+
+.am-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-spring), border-color 0.2s;
+}
+
+.am-tool:hover { transform: translateY(-2px); border-color: var(--tone); }
+.am-tool:active { transform: scale(0.96); }
+.am-tool[aria-pressed="true"] { border-color: var(--tone); background: var(--tone-soft); color: var(--tone); }
+.am-tool__left { padding: 0 0.4rem; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.1); color: var(--text); font-size: 0.6875rem; }
+.am-tool[data-empty] .am-tool__left { background: var(--am-danger); color: var(--ink); }
+
+.am-pad { display: flex; gap: var(--space-2); }
+
+.am-pad__button {
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.2s var(--ease-spring), border-color 0.2s;
+}
+
+.am-pad__button:hover { border-color: var(--tone); }
+.am-pad__button:active { transform: scale(0.92); background: var(--tone-soft); }
+.am-flare[data-empty] { color: var(--muted); }
+
+.am-panel--result { justify-content: space-between; text-align: left; }
+.am-result__title { font-family: var(--font-display); font-weight: 800; font-size: clamp(1.25rem, 3.4vw, 1.75rem); line-height: 1.1; letter-spacing: -0.03em; }
+.am-result__detail { color: var(--muted); font-size: 0.875rem; }
+
+/* ---------- Phones: a taller stage so the maze and its controls both fit ---------- */
+
+@media (max-width: 40rem) {
+  .stage.am-stage { aspect-ratio: 2 / 3; max-height: 88vh; }
+  .am-play { padding: var(--space-2) var(--space-3); }
+  .am-top { flex-wrap: wrap; row-gap: 0; }
+  .am-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: var(--space-1); }
+  .am-tool { gap: var(--space-1); padding-inline: var(--space-1); font-size: 0.6875rem; }
+  .am-panel > .am-button { flex: 1 1 100%; }
+  .am-panel--result { justify-content: center; text-align: center; }
+  .am-steps { gap: var(--space-2); font-size: 0.8125rem; line-height: 1.5; }
+  .am-steps li { padding-left: 2.25rem; }
+  .am-card { padding: var(--space-4); gap: var(--space-3); align-content: start; }
+  .am-pad__button { width: 2.75rem; height: 2.75rem; }
+}

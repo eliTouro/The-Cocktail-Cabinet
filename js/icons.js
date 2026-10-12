@@ -19,6 +19,10 @@ const SHAPES = {
     '<circle cx="12" cy="33" r="5" fill="currentColor" stroke="none"/><circle cx="28" cy="33" r="5"/>' +
     '<circle cx="40" cy="10" r="2" fill="currentColor" stroke="none"/><circle cx="40" cy="17" r="2"/>' +
     '<circle cx="40" cy="30" r="2"/><circle cx="40" cy="37" r="2" fill="currentColor" stroke="none"/>',
+  'amaze-me':
+    '<path d="M42 18V6H6v36h36V30"/><path d="M6 18h16M30 18v12H18"/>' +
+    '<circle cx="13" cy="35" r="2.5" fill="currentColor" stroke="none"/>' +
+    '<circle cx="13" cy="35" r="8" stroke-dasharray="2 3.5"/>',
 };
 
 export function createIcon(gameId) {

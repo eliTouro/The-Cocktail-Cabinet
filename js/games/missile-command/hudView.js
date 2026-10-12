@@ -25,6 +25,7 @@ export function createMissileHud(container, { isDefending, isCompact }) {
   const side = isDefending ? 'human' : 'computer';
   const tuning = TUNING[side]();
   const hud = createHud(container, { goal: GOAL[side], controls: CONTROLS[side] });
+  const reloadSeconds = isDefending ? tuning.baseCooldown : tuning.launchCooldown;
   const lastDrawn = new Map();
 
   function setMeter(id, spec) {
@@ -36,8 +37,33 @@ export function createMissileHud(container, { isDefending, isCompact }) {
 
   function showAmmo(state) {
     state.bases.forEach((base, index) => {
-      const text = base.alive ? `${base.ammo}/${tuning.ammoPerBase}${base.cooldown > 0 ? ' reloading' : ''}` : 'destroyed';
+      const text = base.alive ? `${base.ammo}/${tuning.ammoPerBase}` : 'destroyed';
       setMeter(ammoMeterId(index), { label: `Base ${index + 1}`, value: base.ammo, max: tuning.ammoPerBase, text });
+    });
+  }
+
+  /** One meter for all bases: the total as a bar, each base's own count in the readout. */
+  function showCompactAmmo(state) {
+    const counts = state.bases.map((base) => (base.alive ? base.ammo : 'X'));
+    const total = state.bases.reduce((sum, base) => sum + base.ammo, 0);
+    setMeter('ammo', { label: 'Ammo', value: total, max: state.bases.length * tuning.ammoPerBase, text: counts.join(' | ') });
+  }
+
+  /** Seconds until the player's next launch can go: the shared pause, or for a defender the soonest usable base. */
+  function secondsUntilReady(state) {
+    if (!isDefending) return state.launchCooldown;
+    const usable = state.bases.filter((base) => base.alive && base.ammo > 0);
+    const soonestBase = usable.length > 0 ? Math.min(...usable.map((base) => base.cooldown)) : 0;
+    return Math.max(state.fireCooldown, soonestBase);
+  }
+
+  function showReload(state) {
+    const wait = secondsUntilReady(state);
+    setMeter('reload', {
+      label: 'Reload',
+      value: reloadSeconds - wait,
+      max: reloadSeconds,
+      text: wait > 0 ? `${oneDecimal(wait)} s` : 'ready',
     });
   }
 
@@ -48,7 +74,7 @@ export function createMissileHud(container, { isDefending, isCompact }) {
 
   function showAttackMeters(state) {
     setMeter('budget', {
-      label: `Budget +${tuning.budgetRefill}/s`,
+      label: isCompact ? 'Budget' : `Budget +${tuning.budgetRefill}/s`,
       value: state.budget,
       max: tuning.budgetCap,
       text: `${oneDecimal(state.budget)}/${tuning.budgetCap}`,
@@ -64,9 +90,10 @@ export function createMissileHud(container, { isDefending, isCompact }) {
 
   return {
     update(state) {
-      if (isDefending) showAmmo(state);
+      if (isDefending) (isCompact ? showCompactAmmo : showAmmo)(state);
       else showAttackMeters(state);
       if (isCompact) return;
+      showReload(state);
       showCitiesAndTime(state);
       if (!isDefending) showDefenderAmmo(state);
     },

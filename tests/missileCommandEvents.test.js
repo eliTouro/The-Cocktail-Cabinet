@@ -6,6 +6,7 @@ import {
   EVENT, REJECTION, createBlast, createState, groundTarget, interceptorRequest, step, warheadRequest,
 } from '../js/games/missile-command/rules.js';
 import { soundForEvent } from '../js/games/missile-command/sounds.js';
+import { REFUSAL } from '../js/games/missile-command/texts.js';
 
 const HUMAN = TUNING.human();
 const COMPUTER = TUNING.computer();
@@ -117,4 +118,15 @@ test('every event type has a sound, and an empty base clicks differently from ot
   const dry = soundForEvent({ type: EVENT.refused, reason: REJECTION.noAmmo });
   assert.notEqual(dry, soundForEvent({ type: EVENT.refused, reason: REJECTION.cooldown }));
   assert.notEqual(dry, soundForEvent({ type: EVENT.refused, reason: REJECTION.budget }));
+});
+
+test('every refusal the rules can report has a hint, a cursor label and meters to flash', () => {
+  const reasonsByKind = {
+    interceptor: [REJECTION.noAmmo, REJECTION.cooldown],
+    warhead: [REJECTION.cooldown, REJECTION.budget, REJECTION.tooManyWarheads],
+  };
+  Object.entries(reasonsByKind).forEach(([kind, reasons]) => reasons.forEach((reason) => {
+    const { hint, label, meters } = REFUSAL[kind][reason];
+    assert.ok(hint && label && Array.isArray(meters), `${kind} ${reason}`);
+  }));
 });

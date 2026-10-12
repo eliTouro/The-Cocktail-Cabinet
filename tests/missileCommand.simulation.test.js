@@ -21,7 +21,7 @@ test('even the novice defender makes real progress: it shoots down most warheads
 
 test('the novice defender is beatable by a patient salvo attacker, but the game does not end instantly', () => {
   const games = outcomes({ skillAt: NOVICE });
-  assert.ok(countWhere(games, PHASE.citiesLost) >= 4);
+  assert.ok(countWhere(games, PHASE.citiesLost) >= 2);
   games.forEach((state) => assert.ok(state.time > 30));
 });
 

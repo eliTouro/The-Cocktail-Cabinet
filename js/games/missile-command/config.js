@@ -2,7 +2,7 @@ import { ramp } from '../../core/difficulty.js';
 
 export const WIDTH = 640;
 export const HEIGHT = 480;
-export const GROUND_Y = 442;
+export const GROUND_Y = 396;
 
 export const BASE_XS = [48, 320, 592];
 export const CITY_XS = [128, 192, 256, 384, 448, 512];
@@ -78,14 +78,14 @@ export const FIRST_WAVE_DELAY = 1;
 
 /**
  * Defend mode wave curve over the difficulty clock (SECONDS_TO_HARDEST): 9 -> 12 warheads per wave
- * falling at 44 -> 56 px/s, launched over a window that stretches with the count. Early waves are
+ * falling at 42 -> 54 px/s, launched over a window that stretches with the count. Early waves are
  * slow enough to learn the lead on a falling warhead; late ones need chain reactions and ammo
  * discipline. Splitting warheads (which break into extra warheads mid-fall) only begin a third of
  * the way up the ramp and top out at a 45% chance per warhead.
  */
 export const WAVE = (seconds) => ({
   count: Math.round(ramp(9, 12, SECONDS_TO_HARDEST, seconds)),
-  speed: ramp(44, 56, SECONDS_TO_HARDEST, seconds),
+  speed: ramp(42, 54, SECONDS_TO_HARDEST, seconds),
   splitChance: Math.max(0, ramp(-0.2, 0.45, SECONDS_TO_HARDEST, seconds)),
 });
 
@@ -98,14 +98,14 @@ export const WAVE_LAYOUT = {
 
 /**
  * Computer defender skill, ramped over the difficulty clock so the human attacks a sloppy defender
- * first and a sharper one later: at level 1 it notices warheads 0.6 s late, misses its aim point by
- * up to 20 px, wrongly judges 18% of warheads and shuffles its priorities by 2.5 s; it ends at
- * 0.5 s, 13 px, 8% and 1 s.
+ * first and a sharper one later: at level 1 it notices warheads 0.5 s late, misses its aim point by
+ * up to 17 px, wrongly judges 16% of warheads and shuffles its priorities by 2.5 s; it ends at
+ * 0.42 s, 12 px, 7% and 1 s.
  */
 export const AI_SKILL = (seconds) => ({
-  reactionDelay: ramp(0.6, 0.5, SECONDS_TO_HARDEST, seconds),
-  aimError: ramp(20, 13, SECONDS_TO_HARDEST, seconds),
-  mistakeRate: ramp(0.18, 0.08, SECONDS_TO_HARDEST, seconds),
+  reactionDelay: ramp(0.5, 0.42, SECONDS_TO_HARDEST, seconds),
+  aimError: ramp(17, 12, SECONDS_TO_HARDEST, seconds),
+  mistakeRate: ramp(0.16, 0.07, SECONDS_TO_HARDEST, seconds),
   priorityNoise: ramp(2.5, 1, SECONDS_TO_HARDEST, seconds),
 });
 

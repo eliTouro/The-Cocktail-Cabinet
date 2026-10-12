@@ -30,11 +30,11 @@ export const INTRO = {
 /** Why a launch was refused: the hint to show and the meters that explain it. */
 export const REFUSAL = {
   interceptor: {
-    [REJECTION.noAmmo]: { label: 'out of ammo', hint: 'Out of missiles! Bases are restocked when the wave is cleared.', meters: ['ammo-0', 'ammo-1', 'ammo-2'] },
-    [REJECTION.cooldown]: { label: 'reloading', hint: 'Bases are reloading. Wait a moment.', meters: [] },
+    [REJECTION.noAmmo]: { label: 'out of ammo', hint: 'No missiles left. Bases are restocked when the wave is cleared.', meters: ['ammo-0', 'ammo-1', 'ammo-2', 'ammo'] },
+    [REJECTION.cooldown]: { label: 'reloading', hint: 'Bases are reloading. Wait a moment.', meters: ['reload'] },
   },
   warhead: {
-    [REJECTION.cooldown]: { label: 'reloading', hint: 'Launcher reloading. Wait a moment.', meters: [] },
+    [REJECTION.cooldown]: { label: 'reloading', hint: 'Launcher reloading. Wait a moment.', meters: ['reload'] },
     [REJECTION.budget]: { label: 'need budget', hint: 'Out of launch budget. It refills over time.', meters: ['budget'] },
     [REJECTION.tooManyWarheads]: { label: 'too many in the air', hint: `Already ${COMPUTER.maxWarheads} warheads in the air. Wait for some to land.`, meters: ['air'] },
   },
